@@ -1,0 +1,12 @@
+[package]
+name = "ovba"
+version = "0.1.0"
+authors = ["Tim Weis <tim.weis@outlook.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+zip = "0.5"
+sxd-xpath = "0.4"
+sxd-document = "0.3"
