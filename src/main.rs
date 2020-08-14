@@ -12,7 +12,6 @@ use std::{
     path::PathBuf,
 };
 
-/// Inspect and extract VBA projects from Office Open XML documents.
 #[derive(Clap, Debug)]
 #[clap(author, about, version)]
 struct Opts {
