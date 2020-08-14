@@ -1,8 +1,8 @@
 mod error;
-mod oox;
+mod ooxml;
 
 use error::Error;
-use oox::Document;
+use ooxml::Document;
 
 use clap::Clap;
 
