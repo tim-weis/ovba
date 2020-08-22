@@ -1,3 +1,8 @@
+#![forbid(unsafe_code)]
+#![warn(rust_2018_idioms)]
+
+//! Contains structures and functions to inspect Office Open XML documents and extract data.
+
 use crate::error::Error;
 
 use sxd_document::parser;
@@ -10,6 +15,7 @@ use std::{
     path::PathBuf,
 };
 
+/// Opaque data type that represents an Office Open XML file.
 pub(crate) struct Document {
     data: Vec<u8>,
 }
@@ -80,13 +86,16 @@ impl Document {
         Ok(data)
     }
 
+    /// Returns the root content types XML document.
     fn content_types(&self) -> Result<String, Error> {
+        const CONTENT_TYPES_NAME: &str = "[Content_Types].xml";
+
         let mut cursor = Cursor::new(&self.data);
         let mut archive =
             ZipArchive::new(&mut cursor).map_err(|e| Error::InvalidDocument(e.into()))?;
 
         let mut content = archive
-            .by_name("[Content_Types].xml")
+            .by_name(CONTENT_TYPES_NAME)
             .map_err(|e| Error::InvalidDocument(e.into()))?;
         let mut xml_text = String::new();
         content

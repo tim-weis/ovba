@@ -1,5 +1,9 @@
+#![forbid(unsafe_code)]
+#![warn(rust_2018_idioms)]
+
 mod error;
 mod ooxml;
+mod ovba;
 
 use error::Error;
 use ooxml::Document;
@@ -24,10 +28,12 @@ struct Opts {
 
 #[derive(Clap, Debug)]
 enum SubCommand {
+    /// Dump binary VBA project file
     Dump(Dump),
+    /// Display a list of storages and streams
+    List,
 }
 
-/// Dump binary VBA project file
 #[derive(Clap, Debug)]
 struct Dump {
     /// Output file. Writes to STDOUT if omitted.
@@ -55,6 +61,18 @@ fn main() -> Result<(), Error> {
                     write_output(&dump_opts.output, &data)?;
                 }
                 None => eprintln!("Document doesn't contain a VBA project."),
+            }
+        }
+        SubCommand::List => {
+            let doc = Document::new(&opts.input)?;
+            let part_name = doc.vba_project_name()?;
+            if let Some(part_name) = part_name {
+                let part = doc.part(&part_name)?;
+                let project = ovba::open_project(part)?;
+                let entries = project.list();
+                for entry in &entries {
+                    println!("Entry: {}", entry);
+                }
             }
         }
     }
