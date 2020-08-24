@@ -25,6 +25,7 @@ pub(crate) enum SysKind {
 pub(crate) struct ProjectInformation {
     information: Information,
     references: Vec<Reference>,
+    modules: Modules,
 }
 
 #[derive(Debug)]
@@ -89,6 +90,35 @@ pub(crate) struct Information {
     constants_unicode: String,
 }
 
+#[derive(Debug)]
+pub(crate) struct Modules {
+    count: u16,
+    cookie: u16,
+    modules: Vec<Module>,
+}
+
+#[derive(Debug)]
+pub(crate) enum ModuleType {
+    Procedural,
+    DocClsDesigner,
+}
+
+#[derive(Debug)]
+pub(crate) struct Module {
+    name: String,
+    name_unicode: Option<String>,
+    stream_name: String,
+    stream_name_unicode: String,
+    doc_string: String,
+    doc_string_unicode: String,
+    text_offset: u32,
+    help_context: u32,
+    cookie: u16,
+    module_type: ModuleType,
+    read_only: bool,
+    private: bool,
+}
+
 impl Project {
     pub(crate) fn list(&self) -> Vec<(String, String)> {
         let mut result = Vec::new();
@@ -112,6 +142,18 @@ impl Project {
             .map_err(|e| Error::Io(e.into()))?;
 
         Ok(buffer)
+    }
+
+    pub(crate) fn decompress_stream_from(
+        &mut self,
+        stream_name: &str,
+        offset: usize,
+    ) -> Result<Vec<u8>, Error> {
+        let data = self.read_stream(stream_name)?;
+        let data = parser::decompress(&data[offset..])
+            .map_err(|_| Error::Unknown)?
+            .1;
+        Ok(data)
     }
 
     /// Returns version independent project information.
@@ -154,13 +196,14 @@ pub(crate) fn open_project(raw: Vec<u8>) -> Result<Project, Error> {
 /// Internal parser implementations
 mod parser {
     use super::{
-        Information, ProjectInformation, Reference, ReferenceControl, ReferenceOriginal,
-        ReferenceProject, ReferenceRegistered, SysKind,
+        Information, Module, ModuleType, Modules, ProjectInformation, Reference, ReferenceControl,
+        ReferenceOriginal, ReferenceProject, ReferenceRegistered, SysKind,
     };
     use codepage::to_encoding;
     use encoding_rs::{CoderResult, UTF_16LE};
     use nom::{
         bytes::complete::{tag, take},
+        combinator::opt,
         error::{ErrorKind, ParseError},
         multi::length_data,
         number::complete::{le_u16, le_u32, le_u8},
@@ -598,7 +641,6 @@ mod parser {
         let mut result = Vec::new();
         let mut i = i;
         loop {
-            // TODO: Verify whether `i` stays alive at the end of the loop.
             let (remainder, value) = parse_reference(i, code_page)?;
             i = remainder;
             if let Some(reference) = value {
@@ -611,6 +653,140 @@ mod parser {
 
     // -------------------------------------------------------------------------
     // -------------------------------------------------------------------------
+
+    fn parse_module_name_unicode(i: &[u8]) -> IResult<&[u8], String, FormatError<&[u8]>> {
+        let (i, _) = tag(&[0x47, 0x00])(i)?;
+        let (i, name_unicode) = length_data(le_u32)(i)?;
+        let name_unicode = utf16_to_string(name_unicode);
+        Ok((i, name_unicode))
+    }
+
+    fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<&[u8]>> {
+        // MODULENAME Record
+        let (i, _) = tag(&[0x19, 0x00])(i)?;
+        let (i, name) = length_data(le_u32)(i)?;
+        let name = cp_to_string(name, code_page);
+
+        // /(Optional) MODULENAMEUNICODE Record
+        let (i, name_unicode) = opt(parse_module_name_unicode)(i)?;
+
+        // MODULESTREAMNAME Record
+        let (i, _) = tag(&[0x1a, 0x00])(i)?;
+        let (i, stream_name) = length_data(le_u32)(i)?;
+        let stream_name = cp_to_string(stream_name, code_page);
+
+        let (i, _) = tag(&[0x32, 0x00])(i)?;
+        let (i, stream_name_unicode) = length_data(le_u32)(i)?;
+        let stream_name_unicode = utf16_to_string(stream_name_unicode);
+
+        // MODULEDOCSTRING Record
+        let (i, _) = tag(&[0x1c, 0x00])(i)?;
+        let (i, doc_string) = length_data(le_u32)(i)?;
+        let doc_string = cp_to_string(doc_string, code_page);
+
+        let (i, _) = tag(&[0x48, 0x00])(i)?;
+        let (i, doc_string_unicode) = length_data(le_u32)(i)?;
+        let doc_string_unicode = utf16_to_string(doc_string_unicode);
+
+        // MODULEOFFSET Record
+        let (i, _) = tag(&[0x31, 0x00])(i)?;
+        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
+        let (i, text_offset) = le_u32(i)?;
+
+        // MODULEHELPCONTEXT Record
+        let (i, _) = tag(&[0x1e, 0x00])(i)?;
+        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
+        let (i, help_context) = le_u32(i)?;
+
+        // MODULECOOKIE Record
+        let (i, _) = tag(&[0x2c, 0x00])(i)?;
+        let (i, _) = tag(U32_FIXED_SIZE_2)(i)?;
+        let (i, cookie) = le_u16(i)?;
+
+        // MODULETYPE Record
+        let (i, id) = le_u16(i)?;
+        let module_type = match id {
+            0x0021_u16 => ModuleType::Procedural,
+            0x0022_u16 => ModuleType::DocClsDesigner,
+            _ => return Err(Error(FormatError::UnexpectedValue)),
+        };
+        let (i, _) = tag(&[0x00, 0x00, 0x00, 0x00])(i)?;
+
+        // MODULEREADONLY Record
+        let (i, read_only) = {
+            let (remainder, id) = le_u16(i)?;
+            if id == 0x0025_u16 {
+                let (i, _) = tag(&[0x00, 0x00, 0x00, 0x00])(remainder)?;
+                (i, true)
+            } else {
+                (i, false)
+            }
+        };
+
+        // MODULEPRIVATE Record
+        let (i, private) = {
+            let (remainder, id) = le_u16(i)?;
+            if id == 0x0028 {
+                let (i, _) = tag(&[0x00, 0x00, 0x00, 0x00])(remainder)?;
+                (i, true)
+            } else {
+                (i, false)
+            }
+        };
+
+        // Terminator
+        let (i, _) = tag(&[0x2b, 0x00])(i)?;
+
+        // Reserved
+        let (i, _) = tag(&[0x00, 0x00, 0x00, 0x00])(i)?;
+
+        Ok((
+            i,
+            Module {
+                name,
+                name_unicode,
+                stream_name,
+                stream_name_unicode,
+                doc_string,
+                doc_string_unicode,
+                text_offset,
+                help_context,
+                cookie,
+                module_type,
+                read_only,
+                private,
+            },
+        ))
+    }
+
+    fn parse_modules(i: &[u8], code_page: u16) -> IResult<&[u8], Modules, FormatError<&[u8]>> {
+        let (i, _) = tag(&[0x0f, 0x00])(i)?;
+        let (i, _) = tag(U32_FIXED_SIZE_2)(i)?;
+
+        let (i, count) = le_u16(i)?;
+
+        let (i, _) = tag(&[0x13, 0x00])(i)?;
+        let (i, _) = tag(U32_FIXED_SIZE_2)(i)?;
+
+        let (i, cookie) = le_u16(i)?;
+
+        let mut modules = Vec::new();
+        let mut i = i;
+        for _ in 0..count {
+            let (remainder, module) = parse_module(i, code_page)?;
+            i = remainder;
+            modules.push(module);
+        }
+
+        Ok((
+            i,
+            Modules {
+                count,
+                cookie,
+                modules,
+            },
+        ))
+    }
 
     // -------------------------------------------------------------------------
     // -------------------------------------------------------------------------
@@ -651,6 +827,16 @@ mod parser {
 
         let (i, references) = parse_references(i, code_page)?;
 
+        let (i, modules) = parse_modules(i, code_page)?;
+
+        // Terminator
+        let (i, _) = tag(&[0x10, 0x00])(i)?;
+
+        // Reserved
+        let (i, _) = tag(&[0x00, 0x00, 0x00, 0x00])(i)?;
+
+        debug_assert_eq!(i.len(), 0, "Input not fully read");
+
         Ok((
             i,
             ProjectInformation {
@@ -672,6 +858,7 @@ mod parser {
                     constants_unicode,
                 },
                 references,
+                modules,
             },
         ))
     }

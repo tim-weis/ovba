@@ -75,6 +75,16 @@ fn main() -> Result<(), Error> {
                 for entry in &entries {
                     println!("Entry: {} ({})", entry.0, entry.1);
                 }
+                // // TEMPORARY CODE --- VVV
+                // let data = project
+                //     .decompress_stream_from(r#"/VBA\Calendar"#, 30952_usize)
+                //     .unwrap();
+                // write(
+                //     r#"C:\Users\Tim\AppData\Local\Temp\workbook\xl\VBA\Calendar.nom.out"#,
+                //     &data,
+                // )
+                // .unwrap();
+                // // TEMPORARY CODE --- AAA
             }
         }
         SubCommand::Info => {
