@@ -32,6 +32,8 @@ enum SubCommand {
     Dump(Dump),
     /// Display a list of storages and streams
     List,
+    /// Display VBA project information
+    Info,
 }
 
 #[derive(Clap, Debug)]
@@ -71,8 +73,19 @@ fn main() -> Result<(), Error> {
                 let project = ovba::open_project(part)?;
                 let entries = project.list();
                 for entry in &entries {
-                    println!("Entry: {}", entry);
+                    println!("Entry: {} ({})", entry.0, entry.1);
                 }
+            }
+        }
+        SubCommand::Info => {
+            // TODO: Implementation
+            let doc = Document::new(&opts.input)?;
+            let part_name = doc.vba_project_name()?;
+            if let Some(part_name) = part_name {
+                let part = doc.part(&part_name)?;
+                let mut project = ovba::open_project(part)?;
+                let info = project.information()?;
+                println!("Version Independent Project Information:\n{:#?}", info);
             }
         }
     }
