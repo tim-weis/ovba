@@ -178,6 +178,7 @@ impl Project {
         // Parse binary data
         let (remainder, information) =
             parser::parse_project_information(&buffer).map_err(|_| Error::Unknown)?;
+        debug_assert_eq!(remainder.len(), 0, "Stream not fully consumed");
 
         // Return structured information
         Ok(information)
@@ -207,6 +208,7 @@ mod parser {
         error::{ErrorKind, ParseError},
         multi::length_data,
         number::complete::{le_u16, le_u32, le_u8},
+        sequence::tuple,
         Err::Error,
         IResult,
     };
@@ -295,11 +297,11 @@ mod parser {
         // Extract length
         let length = (header_raw & 0xfff) as usize + 1;
 
-        let i = &i[..length];
+        let (chunk, remainder) = i.split_at(length);
         if flag {
-            Ok(compressed_chunk_parser(i)?)
+            Ok((remainder, compressed_chunk_parser(chunk)?.1))
         } else {
-            Ok(uncompressed_chunk_parser(i)?)
+            Ok((remainder, uncompressed_chunk_parser(chunk)?.1))
         }
     }
 
@@ -331,11 +333,9 @@ mod parser {
 
     fn parse_syskind(i: &[u8]) -> IResult<&[u8], SysKind, FormatError<&[u8]>> {
         const SYS_KIND_SIGNATURE: &[u8] = &[0x01, 0x00];
-        let (i, _) = tag(SYS_KIND_SIGNATURE)(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
-
-        let (i, value) = le_u32(i)?;
-        match value {
+        let (i, (_, _, sys_kind)) =
+            tuple((tag(SYS_KIND_SIGNATURE), tag(U32_FIXED_SIZE_4), le_u32))(i)?;
+        match sys_kind {
             0x0000_0000 => Ok((i, SysKind::Win16)),
             0x0000_0001 => Ok((i, SysKind::Win32)),
             0x0000_0002 => Ok((i, SysKind::MacOs)),
