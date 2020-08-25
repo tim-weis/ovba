@@ -9,6 +9,7 @@ use std::io::{Cursor, Read};
 
 pub(crate) struct Project {
     // TODO: Figure out how to make this generic (attempts have failed with trait bound violations)
+    #[doc(hidden)]
     container: CompoundFile<Cursor<Vec<u8>>>,
 }
 
@@ -208,7 +209,7 @@ mod parser {
         error::{ErrorKind, ParseError},
         multi::length_data,
         number::complete::{le_u16, le_u32, le_u8},
-        sequence::tuple,
+        sequence::{preceded, tuple},
         Err::Error,
         IResult,
     };
@@ -333,8 +334,10 @@ mod parser {
 
     fn parse_syskind(i: &[u8]) -> IResult<&[u8], SysKind, FormatError<&[u8]>> {
         const SYS_KIND_SIGNATURE: &[u8] = &[0x01, 0x00];
-        let (i, (_, _, sys_kind)) =
-            tuple((tag(SYS_KIND_SIGNATURE), tag(U32_FIXED_SIZE_4), le_u32))(i)?;
+        let (i, sys_kind) = preceded(
+            tuple((tag(SYS_KIND_SIGNATURE), tag(U32_FIXED_SIZE_4))),
+            le_u32,
+        )(i)?;
         match sys_kind {
             0x0000_0000 => Ok((i, SysKind::Win16)),
             0x0000_0001 => Ok((i, SysKind::Win32)),
@@ -346,104 +349,103 @@ mod parser {
 
     fn parse_lcid(i: &[u8]) -> IResult<&[u8], u32, FormatError<&[u8]>> {
         const LCID_SIGNATURE: &[u8] = &[0x02, 0x00];
-        let (i, _) = tag(LCID_SIGNATURE)(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
-        let (i, value) = le_u32(i)?;
-        Ok((i, value))
+        let (i, lcid) = preceded(tuple((tag(LCID_SIGNATURE), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
+        Ok((i, lcid))
     }
 
     fn parse_lcid_invoke(i: &[u8]) -> IResult<&[u8], u32, FormatError<&[u8]>> {
         const LCID_INVOKE_SIGNATURE: &[u8] = &[0x14, 0x00];
-        let (i, _) = tag(LCID_INVOKE_SIGNATURE)(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
-        let (i, value) = le_u32(i)?;
-        Ok((i, value))
+        let (i, lcid_invoke) = preceded(
+            tuple((tag(LCID_INVOKE_SIGNATURE), tag(U32_FIXED_SIZE_4))),
+            le_u32,
+        )(i)?;
+        Ok((i, lcid_invoke))
     }
 
     fn parse_code_page(i: &[u8]) -> IResult<&[u8], u16, FormatError<&[u8]>> {
         const CODE_PAGE_SIGNATURE: &[u8] = &[0x03, 0x00];
-        let (i, _) = tag(CODE_PAGE_SIGNATURE)(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_2)(i)?;
-        let (i, value) = le_u16(i)?;
-        Ok((i, value))
+        let (i, code_page) = preceded(
+            tuple((tag(CODE_PAGE_SIGNATURE), tag(U32_FIXED_SIZE_2))),
+            le_u16,
+        )(i)?;
+        Ok((i, code_page))
     }
 
     fn parse_name(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
         const NAME_SIGNATURE: &[u8] = &[0x04, 0x00];
-        let (i, _) = tag(NAME_SIGNATURE)(i)?;
-        let (i, value) = length_data(le_u32)(i)?;
-        Ok((i, value.to_vec()))
+        let (i, name) = preceded(tag(NAME_SIGNATURE), length_data(le_u32))(i)?;
+        Ok((i, name.to_vec()))
     }
 
     fn parse_doc_string(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
         const DOC_STRING_SIGNATURE: &[u8] = &[0x05, 0x00];
-        let (i, _) = tag(DOC_STRING_SIGNATURE)(i)?;
-        let (i, value) = length_data(le_u32)(i)?;
-        Ok((i, value.to_vec()))
+        let (i, doc_string) = preceded(tag(DOC_STRING_SIGNATURE), length_data(le_u32))(i)?;
+        Ok((i, doc_string.to_vec()))
     }
 
     fn parse_doc_string_unicode(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
         const DOC_STRING_UNICODE_SIGNATURE: &[u8] = &[0x40, 0x00];
-        let (i, _) = tag(DOC_STRING_UNICODE_SIGNATURE)(i)?;
-        let (i, value) = length_data(le_u32)(i)?;
-        // `value` represents a sequence of UTF-16 code units. If its length is uneven, the
-        // input is malformed.
-        if (value.len() & 1_usize) != 0 {
+        let (i, doc_string_unicode) =
+            preceded(tag(DOC_STRING_UNICODE_SIGNATURE), length_data(le_u32))(i)?;
+        // `doc_string_unicode` represents a sequence of UTF-16 code units. If its length is uneven,
+        // the input is malformed.
+        if (doc_string_unicode.len() & 1_usize) != 0 {
             Err(Error(FormatError::UnexpectedValue))
         } else {
-            Ok((i, value.to_vec()))
+            Ok((i, doc_string_unicode.to_vec()))
         }
     }
 
     fn parse_help_file_1(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
         const HELP_FILE_1_SIGNATURE: &[u8] = &[0x06, 0x00];
-        let (i, _) = tag(HELP_FILE_1_SIGNATURE)(i)?;
-        let (i, value) = length_data(le_u32)(i)?;
-        Ok((i, value.to_vec()))
+        let (i, help_file_1) = preceded(tag(HELP_FILE_1_SIGNATURE), length_data(le_u32))(i)?;
+        Ok((i, help_file_1.to_vec()))
     }
 
     fn parse_help_file_2(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
         const HELP_FILE_2_SIGNATURE: &[u8] = &[0x3d, 0x00];
-        let (i, _) = tag(HELP_FILE_2_SIGNATURE)(i)?;
-        let (i, value) = length_data(le_u32)(i)?;
-        Ok((i, value.to_vec()))
+        let (i, help_file_2) = preceded(tag(HELP_FILE_2_SIGNATURE), length_data(le_u32))(i)?;
+        Ok((i, help_file_2.to_vec()))
     }
 
     fn parse_help_context(i: &[u8]) -> IResult<&[u8], u32, FormatError<&[u8]>> {
         const HELP_CONTEXT_SIGNATURE: &[u8] = &[0x07, 0x00];
-        let (i, _) = tag(HELP_CONTEXT_SIGNATURE)(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
-        Ok(le_u32(i)?)
+        let (i, help_context) = preceded(
+            tuple((tag(HELP_CONTEXT_SIGNATURE), tag(U32_FIXED_SIZE_4))),
+            le_u32,
+        )(i)?;
+        Ok((i, help_context))
     }
 
     fn parse_lib_flags(i: &[u8]) -> IResult<&[u8], u32, FormatError<&[u8]>> {
         const LIB_FLAGS_SIGNATURE: &[u8] = &[0x08, 0x00];
-        let (i, _) = tag(LIB_FLAGS_SIGNATURE)(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
-        Ok(le_u32(i)?)
+        let (i, lib_flags) = preceded(
+            tuple((tag(LIB_FLAGS_SIGNATURE), tag(U32_FIXED_SIZE_4))),
+            le_u32,
+        )(i)?;
+        Ok((i, lib_flags))
     }
 
     fn parse_version(i: &[u8]) -> IResult<&[u8], (u32, u16), FormatError<&[u8]>> {
         const VERSION_SIGNATURE: &[u8] = &[0x09, 0x00];
-        let (i, _) = tag(VERSION_SIGNATURE)(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
-        let (i, version_major) = le_u32(i)?;
-        let (i, version_minor) = le_u16(i)?;
-        Ok((i, (version_major, version_minor)))
+        let (i, version) = preceded(
+            tuple((tag(VERSION_SIGNATURE), tag(U32_FIXED_SIZE_4))),
+            tuple((le_u32, le_u16)),
+        )(i)?;
+        Ok((i, version))
     }
 
     fn parse_constants(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
         const CONSTANTS_SIGNATURE: &[u8] = &[0x0c, 0x00];
-        let (i, _) = tag(CONSTANTS_SIGNATURE)(i)?;
-        let (i, value) = length_data(le_u32)(i)?;
-        Ok((i, value.to_vec()))
+        let (i, constants) = preceded(tag(CONSTANTS_SIGNATURE), length_data(le_u32))(i)?;
+        Ok((i, constants.to_vec()))
     }
 
     fn parse_constants_unicode(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
         const CONSTANTS_UNICODE_SIGNATURE: &[u8] = &[0x3c, 0x00];
-        let (i, _) = tag(CONSTANTS_UNICODE_SIGNATURE)(i)?;
-        let (i, value) = length_data(le_u32)(i)?;
-        Ok((i, value.to_vec()))
+        let (i, constants_unicode) =
+            preceded(tag(CONSTANTS_UNICODE_SIGNATURE), length_data(le_u32))(i)?;
+        Ok((i, constants_unicode.to_vec()))
     }
 
     // -------------------------------------------------------------------------
@@ -454,25 +456,19 @@ mod parser {
         i: &[u8],
         code_page: u16,
     ) -> IResult<&[u8], Option<(String, String)>, FormatError<&[u8]>> {
-        const NAME_SIGNATURE: u16 = 0x0016_u16;
-        let (i_next, id) = le_u16(i)?;
-
-        // If this is not a REFERENCENAME Record, make sure to return to original slice
-        if id != NAME_SIGNATURE {
-            return Ok((i, None));
-        }
-
-        // Update remaining slice since we have a REFERENCENAME Record
-        let i = i_next;
-        let (i, value) = length_data(le_u32)(i)?;
-        let name = cp_to_string(value, code_page);
-
+        const NAME_SIGNATURE: &[u8] = &[0x16, 0x00];
         const NAME_UNICODE_SIGNATURE: &[u8] = &[0x3e, 0x00];
-        let (i, _) = tag(NAME_UNICODE_SIGNATURE)(i)?;
-        let (i, value) = length_data(le_u32)(i)?;
-        let name_unicode = utf16_to_string(value);
-
-        Ok((i, Some((name, name_unicode))))
+        let (i, name) = opt(tuple((
+            preceded(tag(NAME_SIGNATURE), length_data(le_u32)),
+            preceded(tag(NAME_UNICODE_SIGNATURE), length_data(le_u32)),
+        )))(i)?;
+        if let Some((name, name_unicode)) = name {
+            let name = cp_to_string(name, code_page);
+            let name_unicode = utf16_to_string(name_unicode);
+            Ok((i, Some((name, name_unicode))))
+        } else {
+            Ok((i, None))
+        }
     }
 
     fn parse_reference_original(
@@ -713,26 +709,12 @@ mod parser {
         let (i, _) = tag(&[0x00, 0x00, 0x00, 0x00])(i)?;
 
         // MODULEREADONLY Record
-        let (i, read_only) = {
-            let (remainder, id) = le_u16(i)?;
-            if id == 0x0025_u16 {
-                let (i, _) = tag(&[0x00, 0x00, 0x00, 0x00])(remainder)?;
-                (i, true)
-            } else {
-                (i, false)
-            }
-        };
+        let (i, read_only) = opt(tag(&[0x25, 0x00, 0x00, 0x00, 0x00, 0x00]))(i)?;
+        let read_only = read_only.is_some();
 
         // MODULEPRIVATE Record
-        let (i, private) = {
-            let (remainder, id) = le_u16(i)?;
-            if id == 0x0028 {
-                let (i, _) = tag(&[0x00, 0x00, 0x00, 0x00])(remainder)?;
-                (i, true)
-            } else {
-                (i, false)
-            }
-        };
+        let (i, private) = opt(tag(&[0x28, 0x00, 0x00, 0x00, 0x00, 0x00]))(i)?;
+        let private = private.is_some();
 
         // Terminator
         let (i, _) = tag(&[0x2b, 0x00])(i)?;

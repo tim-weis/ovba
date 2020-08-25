@@ -19,9 +19,6 @@ use std::{
 #[derive(Clap, Debug)]
 #[clap(author, about, version)]
 struct Opts {
-    /// Input file. Reads from STDIN if omitted.
-    #[clap(short, long, parse(from_os_str))]
-    input: Option<PathBuf>,
     #[clap(subcommand)]
     subcmd: SubCommand,
 }
@@ -29,18 +26,35 @@ struct Opts {
 #[derive(Clap, Debug)]
 enum SubCommand {
     /// Dump binary VBA project file
-    Dump(Dump),
+    Dump(DumpArgs),
     /// Display a list of storages and streams
-    List,
+    List(ListArgs),
     /// Display VBA project information
-    Info,
+    Info(InfoArgs),
 }
 
 #[derive(Clap, Debug)]
-struct Dump {
+struct DumpArgs {
+    /// Input file. Reads from STDIN if omitted.
+    #[clap(short, long, parse(from_os_str))]
+    input: Option<PathBuf>,
     /// Output file. Writes to STDOUT if omitted.
     #[clap(short, long, parse(from_os_str))]
     output: Option<PathBuf>,
+}
+
+#[derive(Clap, Debug)]
+struct ListArgs {
+    /// Input file. Reads from STDIN if omitted.
+    #[clap(short, long, parse(from_os_str))]
+    input: Option<PathBuf>,
+}
+
+#[derive(Clap, Debug)]
+struct InfoArgs {
+    /// Input file. Reads from STDIN if omitted.
+    #[clap(short, long, parse(from_os_str))]
+    input: Option<PathBuf>,
 }
 
 fn write_output(to: &Option<PathBuf>, data: &[u8]) -> Result<(), Error> {
@@ -55,7 +69,7 @@ fn main() -> Result<(), Error> {
 
     match opts.subcmd {
         SubCommand::Dump(dump_opts) => {
-            let doc = Document::new(&opts.input)?;
+            let doc = Document::new(&dump_opts.input)?;
             let part_name = doc.vba_project_name()?;
             match &part_name {
                 Some(part_name) => {
@@ -65,8 +79,8 @@ fn main() -> Result<(), Error> {
                 None => eprintln!("Document doesn't contain a VBA project."),
             }
         }
-        SubCommand::List => {
-            let doc = Document::new(&opts.input)?;
+        SubCommand::List(list_opts) => {
+            let doc = Document::new(&list_opts.input)?;
             let part_name = doc.vba_project_name()?;
             if let Some(part_name) = part_name {
                 let part = doc.part(&part_name)?;
@@ -87,9 +101,9 @@ fn main() -> Result<(), Error> {
                 // // TEMPORARY CODE --- AAA
             }
         }
-        SubCommand::Info => {
+        SubCommand::Info(info_opts) => {
             // TODO: Implementation
-            let doc = Document::new(&opts.input)?;
+            let doc = Document::new(&info_opts.input)?;
             let part_name = doc.vba_project_name()?;
             if let Some(part_name) = part_name {
                 let part = doc.part(&part_name)?;
