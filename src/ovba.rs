@@ -476,8 +476,7 @@ mod parser {
         code_page: u16,
     ) -> IResult<&[u8], String, FormatError<&[u8]>> {
         const ORIGINAL_SIGNATURE: &[u8] = &[0x33, 0x00];
-        let (i, _) = tag(ORIGINAL_SIGNATURE)(i)?;
-        let (i, libid_original) = length_data(le_u32)(i)?;
+        let (i, libid_original) = preceded(tag(ORIGINAL_SIGNATURE), length_data(le_u32))(i)?;
         let libid_original = cp_to_string(libid_original, code_page);
         Ok((i, libid_original))
     }
@@ -497,28 +496,24 @@ mod parser {
         };
 
         const CONTROL_SIGNATURE: &[u8] = &[0x2f, 0x00];
-        let (i, _) = tag(CONTROL_SIGNATURE)(i)?;
-        let (i, _combined_size) = le_u32(i)?;
-        let (i, libid_twiddled) = length_data(le_u32)(i)?;
+        let (i, libid_twiddled) =
+            preceded(tuple((tag(CONTROL_SIGNATURE), le_u32)), length_data(le_u32))(i)?;
         let libid_twiddled = cp_to_string(libid_twiddled, code_page);
 
         const RESERVED_1: &[u8] = &[0x00, 0x00, 0x00, 0x00];
         const RESERVED_2: &[u8] = &[0x00, 0x00];
-        let (i, _) = tag(RESERVED_1)(i)?;
-        let (i, _) = tag(RESERVED_2)(i)?;
+        let (i, _) = tuple((tag(RESERVED_1), tag(RESERVED_2)))(i)?;
 
         let (i, name_extended) = parse_reference_name(i, code_page)?;
 
         const RESERVED_3: &[u8] = &[0x30, 0x00];
-        let (i, _) = tag(RESERVED_3)(i)?;
-        let (i, _combined_size) = le_u32(i)?;
-        let (i, libid_extended) = length_data(le_u32)(i)?;
+        let (i, libid_extended) =
+            preceded(tuple((tag(RESERVED_3), le_u32)), length_data(le_u32))(i)?;
         let libid_extended = cp_to_string(libid_extended, code_page);
 
         const RESERVED_4: &[u8] = &[0x00, 0x00, 0x00, 0x00];
         const RESERVED_5: &[u8] = &[0x00, 0x00];
-        let (i, _) = tag(RESERVED_4)(i)?;
-        let (i, _) = tag(RESERVED_5)(i)?;
+        let (i, _) = tuple((tag(RESERVED_4), tag(RESERVED_5)))(i)?;
 
         let (i, guid) = take(16_usize)(i)?;
         let guid = guid.to_vec();
@@ -544,15 +539,15 @@ mod parser {
         code_page: u16,
     ) -> IResult<&[u8], ReferenceRegistered, FormatError<&[u8]>> {
         const REGISTERED_SIGNATURE: &[u8] = &[0x0d, 0x00];
-        let (i, _) = tag(REGISTERED_SIGNATURE)(i)?;
-        let (i, _combined_size) = le_u32(i)?;
-        let (i, libid) = length_data(le_u32)(i)?;
+        let (i, libid) = preceded(
+            tuple((tag(REGISTERED_SIGNATURE), le_u32)),
+            length_data(le_u32),
+        )(i)?;
         let libid = cp_to_string(libid, code_page);
 
         const RESERVED_1: &[u8] = &[0x00, 0x00, 0x00, 0x00];
         const RESERVED_2: &[u8] = &[0x00, 0x00];
-        let (i, _) = tag(RESERVED_1)(i)?;
-        let (i, _) = tag(RESERVED_2)(i)?;
+        let (i, _) = tuple((tag(RESERVED_1), tag(RESERVED_2)))(i)?;
 
         Ok((i, ReferenceRegistered { name: None, libid }))
     }
@@ -561,17 +556,14 @@ mod parser {
         i: &[u8],
         code_page: u16,
     ) -> IResult<&[u8], ReferenceProject, FormatError<&[u8]>> {
-        let (i, _) = tag(&[0x0e, 0x00])(i)?;
-        let (i, _combined_size) = le_u32(i)?;
-
-        let (i, libid_absolute) = length_data(le_u32)(i)?;
+        let (i, (libid_absolute, libid_relative, major_version, minor_version)) = tuple((
+            preceded(tuple((tag(&[0x0e, 0x00]), le_u32)), length_data(le_u32)),
+            length_data(le_u32),
+            le_u32,
+            le_u16,
+        ))(i)?;
         let libid_absolute = cp_to_string(libid_absolute, code_page);
-
-        let (i, libid_relative) = length_data(le_u32)(i)?;
         let libid_relative = cp_to_string(libid_relative, code_page);
-
-        let (i, major_version) = le_u32(i)?;
-        let (i, minor_version) = le_u16(i)?;
 
         Ok((
             i,
@@ -651,53 +643,45 @@ mod parser {
     // -------------------------------------------------------------------------
 
     fn parse_module_name_unicode(i: &[u8]) -> IResult<&[u8], String, FormatError<&[u8]>> {
-        let (i, _) = tag(&[0x47, 0x00])(i)?;
-        let (i, name_unicode) = length_data(le_u32)(i)?;
+        let (i, name_unicode) = preceded(tag(&[0x47, 0x00]), length_data(le_u32))(i)?;
         let name_unicode = utf16_to_string(name_unicode);
         Ok((i, name_unicode))
     }
 
     fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<&[u8]>> {
         // MODULENAME Record
-        let (i, _) = tag(&[0x19, 0x00])(i)?;
-        let (i, name) = length_data(le_u32)(i)?;
+        let (i, name) = preceded(tag(&[0x19, 0x00]), length_data(le_u32))(i)?;
         let name = cp_to_string(name, code_page);
 
         // /(Optional) MODULENAMEUNICODE Record
         let (i, name_unicode) = opt(parse_module_name_unicode)(i)?;
 
         // MODULESTREAMNAME Record
-        let (i, _) = tag(&[0x1a, 0x00])(i)?;
-        let (i, stream_name) = length_data(le_u32)(i)?;
+        let (i, (stream_name, stream_name_unicode)) = tuple((
+            preceded(tag(&[0x1a, 0x00]), length_data(le_u32)),
+            preceded(tag(&[0x32, 0x00]), length_data(le_u32)),
+        ))(i)?;
         let stream_name = cp_to_string(stream_name, code_page);
-
-        let (i, _) = tag(&[0x32, 0x00])(i)?;
-        let (i, stream_name_unicode) = length_data(le_u32)(i)?;
         let stream_name_unicode = utf16_to_string(stream_name_unicode);
 
         // MODULEDOCSTRING Record
-        let (i, _) = tag(&[0x1c, 0x00])(i)?;
-        let (i, doc_string) = length_data(le_u32)(i)?;
+        let (i, (doc_string, doc_string_unicode)) = tuple((
+            preceded(tag(&[0x1c, 0x00]), length_data(le_u32)),
+            preceded(tag(&[0x48, 0x00]), length_data(le_u32)),
+        ))(i)?;
         let doc_string = cp_to_string(doc_string, code_page);
-
-        let (i, _) = tag(&[0x48, 0x00])(i)?;
-        let (i, doc_string_unicode) = length_data(le_u32)(i)?;
         let doc_string_unicode = utf16_to_string(doc_string_unicode);
 
         // MODULEOFFSET Record
-        let (i, _) = tag(&[0x31, 0x00])(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
-        let (i, text_offset) = le_u32(i)?;
+        let (i, text_offset) =
+            preceded(tuple((tag(&[0x31, 0x00]), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
 
         // MODULEHELPCONTEXT Record
-        let (i, _) = tag(&[0x1e, 0x00])(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_4)(i)?;
-        let (i, help_context) = le_u32(i)?;
+        let (i, help_context) =
+            preceded(tuple((tag(&[0x1e, 0x00]), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
 
         // MODULECOOKIE Record
-        let (i, _) = tag(&[0x2c, 0x00])(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_2)(i)?;
-        let (i, cookie) = le_u16(i)?;
+        let (i, cookie) = preceded(tuple((tag(&[0x2c, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
 
         // MODULETYPE Record
         let (i, id) = le_u16(i)?;
@@ -742,15 +726,8 @@ mod parser {
     }
 
     fn parse_modules(i: &[u8], code_page: u16) -> IResult<&[u8], Modules, FormatError<&[u8]>> {
-        let (i, _) = tag(&[0x0f, 0x00])(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_2)(i)?;
-
-        let (i, count) = le_u16(i)?;
-
-        let (i, _) = tag(&[0x13, 0x00])(i)?;
-        let (i, _) = tag(U32_FIXED_SIZE_2)(i)?;
-
-        let (i, cookie) = le_u16(i)?;
+        let (i, count) = preceded(tuple((tag(&[0x0f, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
+        let (i, cookie) = preceded(tuple((tag(&[0x13, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
 
         let mut modules = Vec::new();
         let mut i = i;
