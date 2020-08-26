@@ -24,9 +24,9 @@ pub(crate) enum SysKind {
 /// Version Independent Project Information
 #[derive(Debug)]
 pub(crate) struct ProjectInformation {
-    information: Information,
-    references: Vec<Reference>,
-    modules: Modules,
+    pub information: Information,
+    pub references: Vec<Reference>,
+    pub modules: Modules,
 }
 
 #[derive(Debug)]
@@ -93,9 +93,9 @@ pub(crate) struct Information {
 
 #[derive(Debug)]
 pub(crate) struct Modules {
-    count: u16,
-    cookie: u16,
-    modules: Vec<Module>,
+    pub count: u16,
+    pub cookie: u16,
+    pub modules: Vec<Module>,
 }
 
 #[derive(Debug)]
@@ -106,18 +106,18 @@ pub(crate) enum ModuleType {
 
 #[derive(Debug)]
 pub(crate) struct Module {
-    name: String,
-    name_unicode: Option<String>,
-    stream_name: String,
-    stream_name_unicode: String,
-    doc_string: String,
-    doc_string_unicode: String,
-    text_offset: u32,
-    help_context: u32,
-    cookie: u16,
-    module_type: ModuleType,
-    read_only: bool,
-    private: bool,
+    pub name: String,
+    pub name_unicode: Option<String>,
+    pub stream_name: String,
+    pub stream_name_unicode: String,
+    pub doc_string: String,
+    pub doc_string_unicode: String,
+    pub text_offset: u32,
+    pub help_context: u32,
+    pub cookie: u16,
+    pub module_type: ModuleType,
+    pub read_only: bool,
+    pub private: bool,
 }
 
 impl Project {
@@ -174,7 +174,6 @@ impl Project {
         // Decompress stream
         let (remainder, buffer) = parser::decompress(&buffer).map_err(|_| Error::Unknown)?;
         debug_assert!(remainder.is_empty());
-        println!("Buffer length: {}", buffer.len());
 
         // Parse binary data
         let (remainder, information) =

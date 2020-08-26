@@ -25,7 +25,7 @@ struct Opts {
 
 #[derive(Clap, Debug)]
 enum SubCommand {
-    /// Dump binary VBA project file
+    /// Dump contents of the VBA project file
     Dump(DumpArgs),
     /// Display a list of storages and streams
     List(ListArgs),
@@ -41,6 +41,9 @@ struct DumpArgs {
     /// Output file. Writes to STDOUT if omitted.
     #[clap(short, long, parse(from_os_str))]
     output: Option<PathBuf>,
+    /// Module to output.
+    #[clap(short, long)]
+    module: Option<String>,
 }
 
 #[derive(Clap, Debug)]
@@ -74,7 +77,30 @@ fn main() -> Result<(), Error> {
             match &part_name {
                 Some(part_name) => {
                     let data = doc.part(part_name)?;
-                    write_output(&dump_opts.output, &data)?;
+                    match dump_opts.module {
+                        Some(module_name) => {
+                            let mut project = ovba::open_project(data)?;
+                            let info = project.information()?;
+                            let module_record = info
+                                .modules
+                                .modules
+                                .iter()
+                                .find(|module| module.name == module_name);
+                            if let Some(module_record) = module_record {
+                                let stream_name = format!("/VBA\\{}", module_record.stream_name);
+                                let stream_data = project.decompress_stream_from(
+                                    &stream_name,
+                                    module_record.text_offset as _,
+                                )?;
+                                write_output(&dump_opts.output, &stream_data)?;
+                            }
+                        }
+
+                        None => {
+                            // Dump full binary project if no module to extract is specified
+                            write_output(&dump_opts.output, &data)?;
+                        }
+                    }
                 }
                 None => eprintln!("Document doesn't contain a VBA project."),
             }
@@ -89,16 +115,6 @@ fn main() -> Result<(), Error> {
                 for entry in &entries {
                     println!("Entry: {} ({})", entry.0, entry.1);
                 }
-                // // TEMPORARY CODE --- VVV
-                // let data = project
-                //     .decompress_stream_from(r#"/VBA\Calendar"#, 30952_usize)
-                //     .unwrap();
-                // write(
-                //     r#"C:\Users\Tim\AppData\Local\Temp\workbook\xl\VBA\Calendar.nom.out"#,
-                //     &data,
-                // )
-                // .unwrap();
-                // // TEMPORARY CODE --- AAA
             }
         }
         SubCommand::Info(info_opts) => {
