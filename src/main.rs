@@ -42,8 +42,14 @@ struct DumpArgs {
     #[clap(short, long, parse(from_os_str))]
     output: Option<PathBuf>,
     /// Module to output.
-    #[clap(short, long)]
+    #[clap(long)]
     module: Option<String>,
+    /// Dump all modules (requires --outdir).
+    #[clap(long, requires("outdir"))]
+    modules: bool,
+    /// Output directory (must exist).
+    #[clap(long, parse(from_os_str))]
+    outdir: Option<PathBuf>,
 }
 
 #[derive(Clap, Debug)]
