@@ -2,18 +2,17 @@
 name = "ovba"
 version = "0.1.0"
 authors = ["Tim Weis <tim.weis@outlook.com>"]
-description = "Command line utility to inspect and extract VBA projects from Office Open XML documents"
+description = "Library for inspecting and extracting data from Office Open XML VBA projects."
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 cfb = "0.3"
-clap = "3.0.0-beta.1"
 codepage = "0.1"
 encoding_rs = "0.8"
 nom = "5.1"
-sxd-document = "0.3"
-sxd-xpath = "0.4"
 thiserror = "1"
-zip = "0.5"
+
+[workspace]
+members = ["cli-tool/"]

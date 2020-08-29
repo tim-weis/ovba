@@ -4,7 +4,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub(crate) enum Error {
+pub enum Error {
     #[error("Not a valid Office Open XML document.\n\t{0}")]
     InvalidDocument(Box<dyn std::error::Error>),
     #[error("Failed to perform I/O.\n\t{0}")]

@@ -254,10 +254,18 @@ name = "ovba"
 version = "0.1.0"
 dependencies = [
  "cfb",
- "clap",
  "codepage",
  "encoding_rs",
  "nom",
+ "thiserror",
+]
+
+[[package]]
+name = "ovba-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "ovba",
  "sxd-document",
  "sxd-xpath",
  "thiserror",

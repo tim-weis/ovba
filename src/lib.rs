@@ -1,20 +1,23 @@
 #![forbid(unsafe_code)]
 #![warn(rust_2018_idioms)]
 
-use crate::error::Error;
+pub mod error;
+
+// TODO: Implement better error handling.
+pub use crate::error::Error;
 
 use cfb::CompoundFile;
 
 use std::io::{Cursor, Read};
 
-pub(crate) struct Project {
+pub struct Project {
     // TODO: Figure out how to make this generic (attempts have failed with trait bound violations)
     #[doc(hidden)]
     container: CompoundFile<Cursor<Vec<u8>>>,
 }
 
 #[derive(Debug)]
-pub(crate) enum SysKind {
+pub enum SysKind {
     Win16,
     Win32,
     MacOs,
@@ -23,14 +26,14 @@ pub(crate) enum SysKind {
 
 /// Version Independent Project Information
 #[derive(Debug)]
-pub(crate) struct ProjectInformation {
+pub struct ProjectInformation {
     pub information: Information,
     pub references: Vec<Reference>,
     pub modules: Modules,
 }
 
 #[derive(Debug)]
-pub(crate) struct ReferenceControl {
+pub struct ReferenceControl {
     /// (Optional) Name and NameUnicode entries
     name: Option<(String, String)>,
     libid_original: Option<String>,
@@ -43,20 +46,20 @@ pub(crate) struct ReferenceControl {
 }
 
 #[derive(Debug)]
-pub(crate) struct ReferenceOriginal {
+pub struct ReferenceOriginal {
     /// (Optional) Name and NameUnicode entries
     name: Option<(String, String)>,
     libid_original: String,
 }
 
 #[derive(Debug)]
-pub(crate) struct ReferenceRegistered {
+pub struct ReferenceRegistered {
     name: Option<(String, String)>,
     libid: String,
 }
 
 #[derive(Debug)]
-pub(crate) struct ReferenceProject {
+pub struct ReferenceProject {
     name: Option<(String, String)>,
     libid_absolute: String,
     libid_relative: String,
@@ -65,7 +68,7 @@ pub(crate) struct ReferenceProject {
 }
 
 #[derive(Debug)]
-pub(crate) enum Reference {
+pub enum Reference {
     Control(ReferenceControl),
     Original(ReferenceOriginal),
     Registered(ReferenceRegistered),
@@ -73,7 +76,7 @@ pub(crate) enum Reference {
 }
 
 #[derive(Debug)]
-pub(crate) struct Information {
+pub struct Information {
     sys_kind: SysKind,
     lcid: u32,
     lcid_invoke: u32,
@@ -92,20 +95,20 @@ pub(crate) struct Information {
 }
 
 #[derive(Debug)]
-pub(crate) struct Modules {
+pub struct Modules {
     pub count: u16,
     pub cookie: u16,
     pub modules: Vec<Module>,
 }
 
 #[derive(Debug)]
-pub(crate) enum ModuleType {
+pub enum ModuleType {
     Procedural,
     DocClsDesigner,
 }
 
 #[derive(Debug)]
-pub(crate) struct Module {
+pub struct Module {
     pub name: String,
     pub name_unicode: Option<String>,
     pub stream_name: String,
@@ -121,7 +124,7 @@ pub(crate) struct Module {
 }
 
 impl Project {
-    pub(crate) fn list(&self) -> Vec<(String, String)> {
+    pub fn list(&self) -> Vec<(String, String)> {
         let mut result = Vec::new();
         for entry in self.container.walk_storage("/").unwrap() {
             result.push((
@@ -132,7 +135,7 @@ impl Project {
         result
     }
 
-    pub(crate) fn read_stream(&mut self, stream_name: &str) -> Result<Vec<u8>, Error> {
+    pub fn read_stream(&mut self, stream_name: &str) -> Result<Vec<u8>, Error> {
         let mut stream = self
             .container
             .open_stream(stream_name)
@@ -145,7 +148,7 @@ impl Project {
         Ok(buffer)
     }
 
-    pub(crate) fn decompress_stream_from(
+    pub fn decompress_stream_from(
         &mut self,
         stream_name: &str,
         offset: usize,
@@ -158,7 +161,7 @@ impl Project {
     }
 
     /// Returns version independent project information.
-    pub(crate) fn information(&mut self) -> Result<ProjectInformation, Error> {
+    pub fn information(&mut self) -> Result<ProjectInformation, Error> {
         const DIR_STREAM_PATH: &str = r#"/VBA\dir"#;
 
         // Read *dir* stream
@@ -185,7 +188,7 @@ impl Project {
     }
 }
 
-pub(crate) fn open_project(raw: Vec<u8>) -> Result<Project, Error> {
+pub fn open_project(raw: Vec<u8>) -> Result<Project, Error> {
     let cursor = Cursor::new(raw);
     let container = CompoundFile::open(cursor).map_err(|e| Error::InvalidDocument(e.into()))?;
     let proj = Project { container };
