@@ -4,8 +4,13 @@ version = "0.1.0"
 authors = ["Tim Weis <tim.weis@outlook.com>"]
 description = "Library for inspecting and extracting data from Office Open XML VBA projects."
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+exclude = [
+    "Cargo.lock",
+    ".gitignore",
+    "docs/dev/**"
+]
+license-file = "LICENSE"
+repository = "https://github.com/tim-weis/ovba"
 
 [dependencies]
 cfb = "0.3"
