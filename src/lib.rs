@@ -1,15 +1,24 @@
+//! A crate for parsing Office VBA projects and extracting compressed content.
+//!
+//! This is an implementation of the [\[MS-OVBA\]: Office VBA File Format Structure][MS-OVBA] protocol
+//! (Revision 9.1, published 2020-02-19).
+//!
+//! [MS-OVBA]: https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc
+
 #![forbid(unsafe_code)]
 #![warn(rust_2018_idioms)]
 
 pub mod error;
 
 // TODO: Implement better error handling.
+#[doc(inline)]
 pub use crate::error::Error;
 
 use cfb::CompoundFile;
 
 use std::io::{Cursor, Read};
 
+/// Represents a VBA project.
 pub struct Project {
     // TODO: Figure out how to make this generic (attempts have failed with trait bound violations)
     #[doc(hidden)]
@@ -77,7 +86,8 @@ pub enum Reference {
 
 #[derive(Debug)]
 pub struct Information {
-    sys_kind: SysKind,
+    /// System kind.
+    pub sys_kind: SysKind,
     lcid: u32,
     lcid_invoke: u32,
     code_page: u16,
