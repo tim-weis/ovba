@@ -1,14 +1,22 @@
 # CompressedContainer
 
-The published documentation ([\[MS-OVBA\]: Office VBA File Format Structure](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc)) explains how to decode a CompressedContainer. The algorithm descibed is rather complex, and appears to have been derived from an existing implementation, rather than the implementation following the specification.
+## Introduction
 
-As it turned out, the implementation can be simplified a lot, once the individual bits of information are put together to form a coherent mental model of the protocol. The following text starts with a high level overview, then gradually adds details and insights, and finally presents an almost trivial implementation of a decompressor.
+Several streams inside the binary VBAProject are stored as `CompressedContainer`s to preserve space. The compression algorithm is based on the *run-length encoding* ([RLE](https://en.wikipedia.org/wiki/Run-length_encoding)) technique.
+
+The published documentation ([\[MS-OVBA\]: Office VBA File Format Structure](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc)) explains how to decode a `CompressedContainer`. The decoder algorithm descibed is rather complex, and appears to have been derived from an existing implementation, rather than the implementation following the specification.
+
+As it turned out, the implementation can be simplified a lot, once the individual bits of information are put together to form a coherent view of the protocol. The following text starts with a high level overview, then works out the finer details, draws conclusions, and finally presents an almost trivial implementation of a decompressor. It concludes with a historic perspective that attempts to look behind the considerations that led to this protocol, and evaluates whether they still apply today.
 
 ## Overview
 
-A `CompressedContainer` is a byte stream consisting of a signature byte (`0x01`) followed by a sequence of one or more `CompressedChunk`s. Each `CompressedChunk` starts with a 2-byte `CompressedChunkHeader` that encodes the chunk's size, a signature, and a flag indicating whether the chunk data is compressed or uncompressed<sup>1</sup>.
+A `CompressedContainer` is a byte stream consisting of a signature byte (`0x01`) followed by a sequence of one or more `CompressedChunk`s:
 
-The header is followed by a stream of bytes (`CompressedChunkData`) that contain either uncompressed data, or an array of `TokenSequence`, controlled by the flag stored in the header. When decompressing, uncompressed data is copied verbatim to the output stream.
+![CompressedContainer Overview](diagrams/CompressedContainer.svg)
+
+Each `CompressedChunk` starts with a 2-byte `CompressedChunkHeader` that encodes the chunk's size, a signature, and a flag indicating whether the chunk data is compressed or uncompressed<sup>1</sup>.
+
+The header is followed by a stream of bytes (`CompressedChunkData`) that contain either uncompressed data, or an array of `TokenSequence`, denoted by the flag stored in the header. When decompressing, uncompressed data is copied verbatim to the output stream.
 
 A `TokenSequence` starts with a `FlagByte` followed by up to 8 tokens. The individual bits of the `FlagByte` encode the types of tokens following it. There are two token types:
 
@@ -20,6 +28,26 @@ A `TokenSequence` starts with a `FlagByte` followed by up to 8 tokens. The indiv
   A `CopyToken` is two bytes wide. It encodes offset and length information. The offset is an index into the output stream relative to the current end of that stream. When decompressing, the respective number of bytes, starting at the specified offset, are copied to the end of the output stream<sup>2</sup>.
 
 This concludes the high-level description of the `CompressedContainer`'s layout. The following text contains more detailed information on the individual parts.
+
+## Details
+
+TODO: Add detailed descriptions
+
+## Invariants
+
+TODO: Add derived/extrapolated algorithm invariants (may need to rethink terminology here), e.g. the fact that each chunk is decoded in isolation, reducing the amount of state required.
+
+## Implementation
+
+TODO: Present implementation, ideally using some sort of diagram.
+
+## Random Thoughts
+
+TODO: Informal information on why the format is the way it is:
+* Simple (doesn't require much CPU)
+* Likely invented at a time of ubiqutuous resource limitation; 4096 (page-sized) buffers everywhere (though it needs to be investigated, whether that has been the page size 'back in the day' as well).
+* Fairly good compression on code, due to frequent use of the same character sequences (variable and function names). Each occurence can be represented in 2.125 bytes (`CopyToken` plus one bit in the `FlagByte`) regardless of the actual length. Compression ratio is roughly 2:1.
+* Used to be stored in a binary .xls file that weren't otherwise compressed. This changed with the introduction of Office Open XML, where each document is ZIP-encoded by default.
 
 ---
 
