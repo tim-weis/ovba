@@ -5,7 +5,6 @@ authors = ["Tim Weis <tim.weis@outlook.com>"]
 description = "Library for inspecting and extracting data from Office Open XML VBA projects."
 edition = "2018"
 exclude = [
-    "Cargo.lock",
     ".gitignore",
     "docs/dev/**"
 ]
