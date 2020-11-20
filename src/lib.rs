@@ -9,6 +9,7 @@
 #![warn(rust_2018_idioms)]
 
 pub mod error;
+pub type Result<T> = std::result::Result<T, error::Error>;
 
 // TODO: Implement better error handling.
 #[doc(inline)]
@@ -134,63 +135,55 @@ pub struct Module {
 }
 
 impl Project {
-    pub fn list(&self) -> Vec<(String, String)> {
+    pub fn list(&self) -> Result<Vec<(String, String)>> {
         let mut result = Vec::new();
-        for entry in self.container.walk_storage("/").unwrap() {
+        for entry in self.container.walk_storage("/").map_err(Error::Cfb)? {
             result.push((
                 entry.name().to_owned(),
                 entry.path().to_str().unwrap_or_default().to_owned(),
             ));
         }
-        result
+        Ok(result)
     }
 
-    pub fn read_stream(&mut self, stream_name: &str) -> Result<Vec<u8>, Error> {
+    pub fn read_stream(&mut self, stream_name: &str) -> Result<Vec<u8>> {
         let mut stream = self
             .container
             .open_stream(stream_name)
-            .map_err(|e| Error::Io(e.into()))?;
+            .map_err(Error::Cfb)?;
         let mut buffer = Vec::new();
-        stream
-            .read_to_end(&mut buffer)
-            .map_err(|e| Error::Io(e.into()))?;
+        stream.read_to_end(&mut buffer).map_err(Error::Cfb)?;
 
         Ok(buffer)
     }
 
-    pub fn decompress_stream_from(
-        &mut self,
-        stream_name: &str,
-        offset: usize,
-    ) -> Result<Vec<u8>, Error> {
+    pub fn decompress_stream_from(&mut self, stream_name: &str, offset: usize) -> Result<Vec<u8>> {
         let data = self.read_stream(stream_name)?;
         let data = parser::decompress(&data[offset..])
-            .map_err(|_| Error::Unknown)?
+            .map_err(|_| Error::Decompressor)?
             .1;
         Ok(data)
     }
 
     /// Returns version independent project information.
-    pub fn information(&mut self) -> Result<ProjectInformation, Error> {
+    pub fn information(&mut self) -> Result<ProjectInformation> {
         const DIR_STREAM_PATH: &str = r#"/VBA\dir"#;
 
         // Read *dir* stream
         let mut stream = self
             .container
             .open_stream(DIR_STREAM_PATH)
-            .map_err(|e| Error::Io(e.into()))?;
+            .map_err(Error::Cfb)?;
         let mut buffer = Vec::new();
-        stream
-            .read_to_end(&mut buffer)
-            .map_err(|e| Error::Io(e.into()))?;
+        stream.read_to_end(&mut buffer).map_err(Error::Cfb)?;
 
         // Decompress stream
-        let (remainder, buffer) = parser::decompress(&buffer).map_err(|_| Error::Unknown)?;
+        let (remainder, buffer) = parser::decompress(&buffer).map_err(|_| Error::Decompressor)?;
         debug_assert!(remainder.is_empty());
 
         // Parse binary data
         let (remainder, information) =
-            parser::parse_project_information(&buffer).map_err(|_| Error::Unknown)?;
+            parser::parse_project_information(&buffer).map_err(|_| Error::Parser)?;
         debug_assert_eq!(remainder.len(), 0, "Stream not fully consumed");
 
         // Return structured information
@@ -198,9 +191,9 @@ impl Project {
     }
 }
 
-pub fn open_project(raw: Vec<u8>) -> Result<Project, Error> {
+pub fn open_project(raw: Vec<u8>) -> Result<Project> {
     let cursor = Cursor::new(raw);
-    let container = CompoundFile::open(cursor).map_err(|e| Error::InvalidDocument(e.into()))?;
+    let container = CompoundFile::open(cursor).map_err(Error::Cfb)?;
     let proj = Project { container };
 
     Ok(proj)
