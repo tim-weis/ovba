@@ -11,6 +11,8 @@
 pub mod error;
 pub type Result<T> = std::result::Result<T, error::Error>;
 
+mod parser;
+
 // TODO: Implement better error handling.
 #[doc(inline)]
 pub use crate::error::Error;
