@@ -4,17 +4,24 @@ use std::error;
 use std::fmt;
 use std::io;
 
+/// A type alias for `Result<T, ovba::Error>`.
+pub type Result<T> = std::result::Result<T, Error>;
+
+/// Public error type.
 #[derive(Debug)]
 pub enum Error {
-    //InvalidDocument(Box<dyn error::Error + 'static>),
+    /// I/O Error.
     Io(io::Error),
     /// Error originating from the cfb implementation.
     Cfb(io::Error),
     // TODO: Add details to make the diagnostic more meaningful to clients.
+    /// Error originating from the `CompressedContainer` decompressor.
     Decompressor,
     // TODO: Add details to make the diagnostic more meaningful to clients.
+    /// Generic parsing error.
     Parser,
     // TODO: Implement proper error handling. The module ovba should probably get its own error type.
+    /// Generic error.
     Unknown,
 }
 
@@ -30,7 +37,6 @@ impl From<io::Error> for Error {
 impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
-            // Error::InvalidDocument(e) => Some(e),
             Error::Io(e) => Some(e),
             Error::Cfb(e) => Some(e),
             Error::Decompressor => None,
@@ -43,7 +49,6 @@ impl error::Error for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            // Error::InvalidDocument(e) => write!(f, "Not a valid Office Open XML document:{}", e),
             Error::Io(e) => write!(f, "I/O error: {}", e),
             Error::Cfb(e) => write!(f, "CFB error: {}", e),
             Error::Decompressor => write!(f, "Decompressor error"),

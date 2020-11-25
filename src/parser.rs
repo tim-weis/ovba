@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use crate::{
     Information, Module, ModuleType, Modules, ProjectInformation, Reference, ReferenceControl,
     ReferenceOriginal, ReferenceProject, ReferenceRegistered, SysKind,
