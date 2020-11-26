@@ -1,7 +1,7 @@
-//! A crate for inspecting and extracting data from Office VBA projects.
+//! An Office VBA project parser written in 100% safe Rust.
 //!
-//! This is an implementation of the [\[MS-OVBA\]: Office VBA File Format Structure][MS-OVBA] protocol
-//! (Revision 9.1, published 2020-02-19).
+//! This is a (partial) implementation of the [\[MS-OVBA\]: Office VBA File Format Structure][MS-OVBA]
+//! protocol (Revision 9.1, published 2020-02-19).
 //!
 //! [MS-OVBA]: https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc
 
@@ -15,17 +15,19 @@ mod parser;
 
 use cfb::CompoundFile;
 
-use std::io::{Cursor, Read};
+use std::{
+    io::{Cursor, Read},
+    path::Path,
+};
 
 /// Represents a VBA project.
 ///
-/// This type serves as the entry point into this crate's functionality, and
-/// exposes the public API surface.
+/// This type serves as the entry point into this crate's functionality and exposes the
+/// public API surface.
 pub struct Project {
     // TODO: Figure out how to make this generic (attempts have failed with
     //       trait bound violations). This would allow [`open_project`] to
     //       accept a wider range of input types.
-    #[doc(hidden)]
     container: CompoundFile<Cursor<Vec<u8>>>,
 }
 
@@ -42,8 +44,8 @@ pub enum SysKind {
     Win64,
 }
 
-/// Specifies information for the VBA project, including project information,
-/// project references, and modules.
+/// Specifies information for the VBA project, including project information, project
+/// references, and modules.
 #[derive(Debug)]
 pub struct ProjectInformation {
     /// Specifies version-independent information for the VBA project.
@@ -162,6 +164,9 @@ pub enum ModuleType {
     ///
     /// A designer module is a VBA module that extends the methods and properties of an
     /// ActiveX control that has been registered with the project.
+    ///
+    /// The file format specification doesn't distinguish between these three module
+    /// types and encodes them using a single umbrella type ID.
     DocClsDesigner,
 }
 
@@ -175,17 +180,29 @@ pub struct Module {
     /// This field is optional in the file format specification. When present it
     /// is equal to the `name` field.
     pub name_unicode: Option<String>,
+    /// Specifies the stream name in the VBA storage corresponding to the containing
+    /// `Module`.
     pub stream_name: String,
+    /// Specifies the stream name derived from the UTF-16 encoding.
     pub stream_name_unicode: String,
+    /// Specifies the description for the containing `Module`.
     pub doc_string: String,
+    /// Specifies the description derived from the UTF-16 encoding.
     pub doc_string_unicode: String,
+    /// Specifies the location of the source code within the stream that corresponds to
+    ///  the containing `Module`.
     pub text_offset: u32,
+    /// Specifies the Help topic identifier for the containing `Module`.
     pub help_context: u32,
+    /// Unused data.
     pub cookie: u16,
     /// Specifies whether the containing `Module` is a procedural module, document
     /// module, class module, or designer module.
     pub module_type: ModuleType,
+    /// Specifies that the containing `Module` is read-only.
     pub read_only: bool,
+    /// Specifies that the containing `Module` is only usable from within the current VBA
+    /// project.
     pub private: bool,
 }
 
@@ -195,7 +212,9 @@ impl Project {
     /// contains the entry's name and the second element the entry's path inside the
     /// CFB.
     ///
-    /// The raw binary data is encoded as a [Compound File Binary](https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb/53989ce4-7b05-4f8d-829b-d08d6148375b).
+    /// The raw binary data is encoded as a [Compound File Binary][MS-CFB]
+    ///
+    /// [MS-CFB]: https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb/53989ce4-7b05-4f8d-829b-d08d6148375b
     pub fn list(&self) -> Result<Vec<(String, String)>> {
         let mut result = Vec::new();
         for entry in self.container.walk_storage("/").map_err(Error::Cfb)? {
@@ -207,10 +226,16 @@ impl Project {
         Ok(result)
     }
 
-    pub fn read_stream(&mut self, stream_name: &str) -> Result<Vec<u8>> {
+    /// Returns a stream's contents.
+    ///
+    /// This is a convenience function operating on the CFB data.
+    pub fn read_stream<P>(&mut self, stream_path: P) -> Result<Vec<u8>>
+    where
+        P: AsRef<Path>,
+    {
         let mut stream = self
             .container
-            .open_stream(stream_name)
+            .open_stream(stream_path)
             .map_err(Error::Cfb)?;
         let mut buffer = Vec::new();
         stream.read_to_end(&mut buffer).map_err(Error::Cfb)?;
@@ -218,8 +243,19 @@ impl Project {
         Ok(buffer)
     }
 
-    pub fn decompress_stream_from(&mut self, stream_name: &str, offset: usize) -> Result<Vec<u8>> {
-        let data = self.read_stream(stream_name)?;
+    /// Returns a stream's decompressed data.
+    ///
+    /// This function reads a stream referenced by `stream_path` and passes the data
+    /// starting at `offset` into the RLE decompressor.
+    ///
+    /// The primary use case for this function is to extract source code from VBA
+    /// [`Module`]s. The respective `offset` is reported by [`Module::text_offset`].
+    // TODO: Code example
+    pub fn decompress_stream_from<P>(&mut self, stream_path: P, offset: usize) -> Result<Vec<u8>>
+    where
+        P: AsRef<Path>,
+    {
+        let data = self.read_stream(stream_path)?;
         let data = parser::decompress(&data[offset..])
             .map_err(|_| Error::Decompressor)?
             .1;

@@ -16,6 +16,8 @@ A `CompressedContainer` is a byte stream consisting of a signature byte (`0x01`)
 
 Each `CompressedChunk` starts with a 2-byte `CompressedChunkHeader` that encodes the chunk's size, a signature, and a flag indicating whether the chunk data is compressed or uncompressed<sup>1</sup>.
 
+![CompressedChunk Overview](diagrams/CompressedChunk.svg)
+
 The header is followed by a stream of bytes (`CompressedChunkData`) that contain either uncompressed data, or an array of `TokenSequence`, denoted by the flag stored in the header. When decompressing, uncompressed data is copied verbatim to the output stream.
 
 A `TokenSequence` starts with a `FlagByte` followed by up to 8 tokens. The individual bits of the `FlagByte` encode the types of tokens following it. There are two token types:
