@@ -1,4 +1,11 @@
-# CompressedContainer
+# Table of contents
+
+1. [Introduction](#introduction)
+1. [Overview](#overview)
+1. [Details](#details)
+1. [Invariants](#invariants)
+1. [Implementation](#implementation)
+1. [Random Thouhgts](#random-thoughts)
 
 ## Introduction
 
@@ -10,30 +17,42 @@ As it turned out, the implementation can be simplified a lot, once the individua
 
 ## Overview
 
-A `CompressedContainer` is a byte stream consisting of a signature byte (`0x01`) followed by a sequence of one or more `CompressedChunk`s:
+A `CompressedContainer` is a byte stream consisting of a signature byte (`0x01`) followed by a sequence of one or more `CompressedChunk`s.
+
+Each `CompressedChunk` in turn starts with a 2-byte `CompressedChunkHeader` that encodes the chunk's raw binary size, a signature, and a flag indicating whether the chunk data is compressed or uncompressed<sup>1</sup>:
 
 ![CompressedContainer Overview](diagrams/CompressedContainer.svg)
 
-Each `CompressedChunk` starts with a 2-byte `CompressedChunkHeader` that encodes the chunk's size, a signature, and a flag indicating whether the chunk data is compressed or uncompressed<sup>1</sup>.
+The `CompressedChunk`'s header is followed by a stream of bytes (`CompressedChunkData`) that contain either uncompressed data, or an array of `TokenSequence`, denoted by the compression flag stored in the header. When decompressing, uncompressed data is copied verbatim to the output stream.
 
-![CompressedChunk Overview](diagrams/CompressedChunk.svg)
+A `TokenSequence` starts with a `FlagByte` followed by up to 8 tokens. Each bit in the `FlagByte` denotes one of two token types:
 
-The header is followed by a stream of bytes (`CompressedChunkData`) that contain either uncompressed data, or an array of `TokenSequence`, denoted by the flag stored in the header. When decompressing, uncompressed data is copied verbatim to the output stream.
+* A `LiteralToken` consists of a single byte. When decompressing, this byte is written to the output stream.
+* A `CopyToken` is two bytes wide. It encodes offset and length information. When decompressing, the requested number of bytes starting at offset in the output stream are copied to the end of the output stream.
 
-A `TokenSequence` starts with a `FlagByte` followed by up to 8 tokens. The individual bits of the `FlagByte` encode the types of tokens following it. There are two token types:
+The following diagram illustrates  a `CompressedChunk`'s layout where the header's compression flag is set to `1`:
 
-* `LiteralToken` (indicated by `0b0`):
-
-  A `LiteralToken` consists of a single byte. When decompressing, this byte is written to the output stream.
-* `CopyToken` (indicated by `0b1`):
-
-  A `CopyToken` is two bytes wide. It encodes offset and length information. The offset is an index into the output stream relative to the current end of that stream. When decompressing, the respective number of bytes, starting at the specified offset, are copied to the end of the output stream<sup>2</sup>.
-
-This concludes the high-level description of the `CompressedContainer`'s layout. The following text contains more detailed information on the individual parts.
+![CompressedChunkData Overview](diagrams/CompressedChunkData.svg)
 
 ## Details
 
-TODO: Add detailed descriptions
+### `TokenSequence`
+
+A `TokenSequence` starts with a `FlagByte` followed by up to 8 tokens. The individual bits of the `FlagByte`, starting from the least significant bit up to the most significant bit, encode the types of tokens following it:
+
+* A `LiteralToken` is indicated by a bit value of `0b0`.
+* A `CopyToken` is indicated by a bit value of `0b1`.
+
+A `CopyToken` is two bytes wide. It encodes offset and length information. The offset is an index into the output stream relative to the current end of that stream. When decompressing, the respective number of bytes, starting at the specified offset, are copied to the end of the output stream<sup>2</sup>.
+
+TODO: Add detailed descriptions (following is an sort-of complete list)
+
+* Explain `CompressedContainer`'s layout (ultimately just the signature; maybe add statistics, i.e. 255 out of 256 possible values get rejected).
+* Explain `CompressedChunk`'s layout, including:
+  * Compression flag.
+  * Signature (again, statistics; 3 bits, i.e. 8 possible bit combinations with 7 of those getting rejected)
+  * Size (represents the entire chunk's size minus 3; 2 header bytes plus 1, the latter is required to store the maximum value of 2<sup>12</sup> given only 12 bits).
+* Explain `TokenSequence`s, in particular how the partition point between offset/length moves as the decompressor's output stream grows.
 
 ## Invariants
 
@@ -50,6 +69,11 @@ TODO: Informal information on why the format is the way it is:
 * Likely invented at a time of ubiqutuous resource limitation; 4096 (page-sized) buffers everywhere (though it needs to be investigated, whether that has been the page size 'back in the day' as well).
 * Fairly good compression on code, due to frequent use of the same character sequences (variable and function names). Each occurence can be represented in 2.125 bytes (`CopyToken` plus one bit in the `FlagByte`) regardless of the actual length. Compression ratio is roughly 2:1.
 * Used to be stored in a binary .xls file that weren't otherwise compressed. This changed with the introduction of Office Open XML, where each document is ZIP-encoded by default.
+
+### Happy accidents
+
+* In an attempt to squeeze as much information as possible into any given space budget, the format specification accidentally made it impossible to encode impossible states (e.g. the size in a `CompressedChunk`s header).
+* The chosen RLE scheme rewards developers using descriptive (or at least long-ish) symbol names. Though not strictly correct, this was a fun observation (a variable named `i` compresses down to anything in between 1 and 1.125 bytes; that's still less than the 2.125 bytes for any symbol of 3 characters and up).
 
 ---
 
