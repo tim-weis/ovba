@@ -52,8 +52,8 @@ pub struct ProjectInformation {
     pub information: Information,
     /// Specifies the external references of the VBA project.
     pub references: Vec<Reference>,
-    /// Specifies data for the modules in the project.
-    pub modules: Modules,
+    /// Specifies the modules in the project.
+    pub modules: Vec<Module>,
 }
 
 /// Specifies a reference to a twiddled type library and its extended type library.
@@ -128,21 +128,6 @@ pub struct Information {
     version_minor: u16,
     constants: String,
     constants_unicode: String,
-}
-
-/// Specifies data for the modules in the project.
-#[derive(Debug)]
-pub struct Modules {
-    /// An unsigned integer that specifies the number of elements in [`Modules::modules`].
-    ///
-    /// This value stores redundant information. It is populated by the parser and will
-    /// always agree with `modules.len()`. It is kept here to accurately represent the
-    /// raw binary contents.
-    pub count: u16,
-    /// Unused data. The value is populated by the parser but no longer used.
-    pub cookie: u16,
-    /// An array of [`Module`] records.
-    pub modules: Vec<Module>,
 }
 
 /// Specifies the containing module's type.
