@@ -10,6 +10,10 @@ exclude = [
 ]
 license-file = "LICENSE"
 repository = "https://github.com/tim-weis/ovba"
+documentation = "https://docs.rs/ovba"
+readme = "README.md"
+keywords = ["parser", "office", "vba"]
+categories = ["parser-implementations"]
 
 [dependencies]
 cfb = "0.3"
