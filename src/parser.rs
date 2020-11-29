@@ -552,14 +552,14 @@ pub(crate) fn parse_project_information(
     let (i, doc_string) = parse_doc_string(i)?;
     let doc_string = cp_to_string(&doc_string, code_page);
 
-    let (i, doc_string_unicode) = parse_doc_string_unicode(i)?;
-    let doc_string_unicode = utf16_to_string(&doc_string_unicode);
+    // doc_string_unicode MUST contain the UTF-16 encoding of doc_string. Can safely be dropped.
+    let (i, _doc_string_unicode) = parse_doc_string_unicode(i)?;
 
     let (i, help_file_1) = parse_help_file_1(i)?;
     let help_file_1 = cp_to_string(&help_file_1, code_page);
 
-    let (i, help_file_2) = parse_help_file_2(i)?;
-    let help_file_2 = cp_to_string(&help_file_2, code_page);
+    // help_file_2 MUST contain the same bytes as help_file_1. Can safely be dropped.
+    let (i, _help_file_2) = parse_help_file_2(i)?;
 
     let (i, help_context) = parse_help_context(i)?;
     let (i, lib_flags) = parse_lib_flags(i)?;
@@ -568,8 +568,8 @@ pub(crate) fn parse_project_information(
     let (i, constants) = parse_constants(i)?;
     let constants = cp_to_string(&constants, code_page);
 
-    let (i, constants_unicode) = parse_constants_unicode(i)?;
-    let constants_unicode = utf16_to_string(&constants_unicode);
+    // constants_unicode MUST contain the UTF-16 encoding of constants. Can safely be dropped.
+    let (i, _constants_unicode) = parse_constants_unicode(i)?;
 
     let (i, references) = parse_references(i, code_page)?;
 
@@ -593,15 +593,12 @@ pub(crate) fn parse_project_information(
                 code_page,
                 name,
                 doc_string,
-                doc_string_unicode,
                 help_file_1,
-                help_file_2,
                 help_context,
                 lib_flags,
                 version_major,
                 version_minor,
                 constants,
-                constants_unicode,
             },
             references,
             modules,

@@ -185,15 +185,12 @@ pub struct Information {
     code_page: u16,
     name: String,
     doc_string: String,
-    doc_string_unicode: String,
     help_file_1: String,
-    help_file_2: String,
     help_context: u32,
     lib_flags: u32,
     version_major: u32,
     version_minor: u16,
     constants: String,
-    constants_unicode: String,
 }
 
 /// Specifies the containing module's type.
