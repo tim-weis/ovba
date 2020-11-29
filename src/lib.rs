@@ -229,12 +229,8 @@ pub struct Module {
     /// Specifies the stream name in the VBA storage corresponding to the containing
     /// `Module`.
     pub stream_name: String,
-    /// Specifies the stream name derived from the UTF-16 encoding.
-    pub stream_name_unicode: String,
     /// Specifies the description for the containing `Module`.
     pub doc_string: String,
-    /// Specifies the description derived from the UTF-16 encoding.
-    pub doc_string_unicode: String,
     /// Specifies the location of the source code within the stream that corresponds to
     /// the containing `Module`.
     pub text_offset: usize,

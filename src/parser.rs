@@ -453,20 +453,20 @@ fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<
     let (i, _name_unicode) = opt(preceded(tag(&[0x47, 0x00]), length_data(le_u32)))(i)?;
 
     // MODULESTREAMNAME Record
-    let (i, (stream_name, stream_name_unicode)) = tuple((
+    // stream_name_unicode MUST be the UTF-16 encoding of stream_name. It can safely be dropped.
+    let (i, (stream_name, _stream_name_unicode)) = tuple((
         preceded(tag(&[0x1a, 0x00]), length_data(le_u32)),
         preceded(tag(&[0x32, 0x00]), length_data(le_u32)),
     ))(i)?;
     let stream_name = cp_to_string(stream_name, code_page);
-    let stream_name_unicode = utf16_to_string(stream_name_unicode);
 
     // MODULEDOCSTRING Record
-    let (i, (doc_string, doc_string_unicode)) = tuple((
+    // doc_string_unicode MUST be the UTF-16 encoding of doc_string. It can safely be dropped.
+    let (i, (doc_string, _doc_string_unicode)) = tuple((
         preceded(tag(&[0x1c, 0x00]), length_data(le_u32)),
         preceded(tag(&[0x48, 0x00]), length_data(le_u32)),
     ))(i)?;
     let doc_string = cp_to_string(doc_string, code_page);
-    let doc_string_unicode = utf16_to_string(doc_string_unicode);
 
     // MODULEOFFSET Record
     let (i, text_offset) = preceded(tuple((tag(&[0x31, 0x00]), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
@@ -508,9 +508,7 @@ fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<
         Module {
             name,
             stream_name,
-            stream_name_unicode,
             doc_string,
-            doc_string_unicode,
             text_offset,
             help_context,
             module_type,
