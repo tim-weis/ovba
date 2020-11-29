@@ -35,7 +35,7 @@
 //!
 //! for module in &project.information()?.modules {
 //!     let path = format!("/VBA\\{}", &module.stream_name);
-//!     let offset = module.text_offset as usize;
+//!     let offset = module.text_offset;
 //!     let src_code = project.decompress_stream_from(&path, offset)?;
 //!     std::fs::write("./out/".to_string() + &module.name, src_code)?;
 //! }
@@ -241,8 +241,8 @@ pub struct Module {
     /// Specifies the description derived from the UTF-16 encoding.
     pub doc_string_unicode: String,
     /// Specifies the location of the source code within the stream that corresponds to
-    ///  the containing `Module`.
-    pub text_offset: u32,
+    /// the containing `Module`.
+    pub text_offset: usize,
     /// Specifies the Help topic identifier for the containing `Module`.
     pub help_context: u32,
     /// Unused data.

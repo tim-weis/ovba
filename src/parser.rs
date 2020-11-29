@@ -475,6 +475,7 @@ fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<
 
     // MODULEOFFSET Record
     let (i, text_offset) = preceded(tuple((tag(&[0x31, 0x00]), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
+    let text_offset = text_offset as _;
 
     // MODULEHELPCONTEXT Record
     let (i, help_context) =
