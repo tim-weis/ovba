@@ -482,7 +482,8 @@ fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<
         preceded(tuple((tag(&[0x1e, 0x00]), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
 
     // MODULECOOKIE Record
-    let (i, cookie) = preceded(tuple((tag(&[0x2c, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
+    // Cookie MUST be ignored on read.
+    let (i, _cookie) = preceded(tuple((tag(&[0x2c, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
 
     // MODULETYPE Record
     let (i, id) = le_u16(i)?;
@@ -518,7 +519,6 @@ fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<
             doc_string_unicode,
             text_offset,
             help_context,
-            cookie,
             module_type,
             read_only,
             private,

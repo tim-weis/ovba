@@ -245,8 +245,6 @@ pub struct Module {
     pub text_offset: usize,
     /// Specifies the Help topic identifier for the containing `Module`.
     pub help_context: u32,
-    /// Unused data.
-    pub cookie: u16,
     /// Specifies whether the containing `Module` is a procedural module, document
     /// module, class module, or designer module.
     pub module_type: ModuleType,
