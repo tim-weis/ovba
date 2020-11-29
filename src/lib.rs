@@ -226,11 +226,6 @@ pub enum ModuleType {
 pub struct Module {
     /// Specifies a VBA identifier as the name of the containing `Module`.
     pub name: String,
-    /// Specifies a VBA identifier as the name of the containing `Module`.
-    ///
-    /// This field is optional in the file format specification. When present it
-    /// is equal to the `name` field.
-    pub name_unicode: Option<String>,
     /// Specifies the stream name in the VBA storage corresponding to the containing
     /// `Module`.
     pub stream_name: String,

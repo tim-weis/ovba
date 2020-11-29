@@ -443,19 +443,14 @@ fn parse_references(
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
 
-fn parse_module_name_unicode(i: &[u8]) -> IResult<&[u8], String, FormatError<&[u8]>> {
-    let (i, name_unicode) = preceded(tag(&[0x47, 0x00]), length_data(le_u32))(i)?;
-    let name_unicode = utf16_to_string(name_unicode);
-    Ok((i, name_unicode))
-}
-
 fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<&[u8]>> {
     // MODULENAME Record
     let (i, name) = preceded(tag(&[0x19, 0x00]), length_data(le_u32))(i)?;
     let name = cp_to_string(name, code_page);
 
-    // /(Optional) MODULENAMEUNICODE Record
-    let (i, name_unicode) = opt(parse_module_name_unicode)(i)?;
+    // (Optional) MODULENAMEUNICODE Record
+    // If present it MUST be the UTF-16 encoding of MODULENAME. It can safely be dropped.
+    let (i, _name_unicode) = opt(preceded(tag(&[0x47, 0x00]), length_data(le_u32)))(i)?;
 
     // MODULESTREAMNAME Record
     let (i, (stream_name, stream_name_unicode)) = tuple((
@@ -512,7 +507,6 @@ fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<
         i,
         Module {
             name,
-            name_unicode,
             stream_name,
             stream_name_unicode,
             doc_string,
