@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use crate::{
-    Information, Module, ModuleType, Modules, ProjectInformation, Reference, ReferenceControl,
+    Information, Module, ModuleType, ProjectInformation, Reference, ReferenceControl,
     ReferenceOriginal, ReferenceProject, ReferenceRegistered, SysKind,
 };
 use codepage::to_encoding;
@@ -525,9 +525,10 @@ fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<
     ))
 }
 
-fn parse_modules(i: &[u8], code_page: u16) -> IResult<&[u8], Modules, FormatError<&[u8]>> {
+fn parse_modules(i: &[u8], code_page: u16) -> IResult<&[u8], Vec<Module>, FormatError<&[u8]>> {
     let (i, count) = preceded(tuple((tag(&[0x0f, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
-    let (i, cookie) = preceded(tuple((tag(&[0x13, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
+    // Cookie MUST be ignored on read.
+    let (i, _cookie) = preceded(tuple((tag(&[0x13, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
 
     let mut modules = Vec::new();
     let mut i = i;
@@ -537,14 +538,7 @@ fn parse_modules(i: &[u8], code_page: u16) -> IResult<&[u8], Modules, FormatErro
         modules.push(module);
     }
 
-    Ok((
-        i,
-        Modules {
-            count,
-            cookie,
-            modules,
-        },
-    ))
+    Ok((i, modules))
 }
 
 // -------------------------------------------------------------------------
