@@ -1,3 +1,6 @@
+[![crates.io](https://img.shields.io/crates/v/ovba.svg)](https://crates.io/crates/ovba)
+[![docs.rs](https://docs.rs/ovba/badge.svg)](https://docs.rs/ovba)
+
 An Office VBA project parser written in 100% safe Rust. This is an implementation of the [\[MS-OVBA\]: Office VBA File Format Structure](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc) protocol (Revision 9.1, published 2020-02-19).
 
 ## Motivation
