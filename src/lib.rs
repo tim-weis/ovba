@@ -6,7 +6,7 @@
 //! The main entry point into the API is the [`Project`] type, returned by the
 //! [`open_project`] function.
 //!
-//! # Examples
+//! # Usage
 //!
 //! Opening a project:
 //!
