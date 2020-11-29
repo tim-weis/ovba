@@ -2,7 +2,7 @@
 name = "ovba"
 version = "0.1.0"
 authors = ["Tim Weis <tim.weis@outlook.com>"]
-description = "Library for inspecting and extracting data from Office Open XML VBA projects."
+description = "An Office VBA project parser written in 100% safe Rust."
 edition = "2018"
 exclude = [
     ".gitignore",
