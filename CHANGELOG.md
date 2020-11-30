@@ -8,8 +8,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 ### Changed
+
+* Changed `Module::text_offset` from `u32` to `usize`.
+
 ### Deprecated
 ### Removed
+
+Breaking changes:
+
+* `Module`:
+  * `name_unicode`
+  * `stream_name_unicode`
+  * `doc_string_unicode`
+  * `cookie`
+
+Non-breaking changes:
+
+* `Information`
+  * `doc_string_unicode`
+  * `help_file_2`
+  * `constants_unicode`
+* `ReferenceProject`
+  * `name.1`
+* `ReferenceRegistered`
+  * `name.1`
+* `ReferenceOriginal`
+  * `name.1`
+* `ReferenceControl`
+  * `name.1`
+  * `name_extended.1`
+
 ### Fixed
 ### Security
 

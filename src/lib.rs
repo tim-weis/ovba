@@ -42,34 +42,7 @@
 //! # Ok::<(), ovba::Error>(())
 //! ```
 //!
-//! # Notes
-//!
-//! The structures exposed at the public API closely follow the layout of the binary file
-//! format specification. This has consequences in two user-visible areas:
-//!
-//! ## Character encoding
-//!
-//! [MS-OVBA][MS-OVBA] stores character sequences in what Microsoft refers to as
-//! [MBCS][MBCS]. In most cases there's also at least an optional Unicode (UTF-16)
-//! representation available.
-//!
-//! This library exposes both (if present) using Rust's native character encoding,
-//! performing conversions as required as part of parsing. This results in seemingly
-//! redundant information being exposed at the API (e.g. [`Module::stream_name`] and
-//! [`Module::stream_name_unicode`]).
-//!
-//! This is an unfortunate situation and will be addressed in a future update.
-//!
-//! ## Unused data
-//!
-//! Several pieces of information in the file format are required to exist, yet need to
-//! be ignored on read (e.g. [`Module::cookie`]). Currently, some of these are exposed,
-//! and documented as "Unused data".
-//!
-//! This, too, is something that will be addressed in a future update.
-//!
 //! [MS-OVBA]: https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc
-//! [MBCS]: https://docs.microsoft.com/en-us/cpp/text/support-for-multibyte-character-sets-mbcss "Support for Multibyte Character Sets (MBCSs)"
 
 #![forbid(unsafe_code)]
 #![warn(rust_2018_idioms, missing_docs)]
