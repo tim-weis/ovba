@@ -1,6 +1,6 @@
 name: continuous-integration
 on:
-  [push, pullrequest]
+  [push, pull_request]
 
 jobs:
   check-formatting:
