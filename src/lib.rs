@@ -125,14 +125,15 @@ pub struct ProjectInformation {
 /// Specifies a reference to a twiddled type library and its extended type library.
 #[derive(Debug)]
 pub struct ReferenceControl {
-    /// (Optional) Name and NameUnicode entries
-    name: Option<(String, String)>,
+    /// (Optional) Name entry
+    name: Option<String>,
     libid_original: Option<String>,
     libid_twiddled: String,
-    name_extended: Option<(String, String)>,
+    name_extended: Option<String>,
     libid_extended: String,
     guid: Vec<u8>, // Should be an `[u8; 16]`, though I'm not sure how to convert &[u8] returned by the parser into an array.
-    /// Unique for each `ReferenceControl`
+    /// MUST be Unique for each `ReferenceControl` in the VBA projectwith the same
+    /// libid_original.
     cookie: u32,
 }
 
@@ -140,22 +141,22 @@ pub struct ReferenceControl {
 /// [`ReferenceControl`]'s twiddled type library was generated from.
 #[derive(Debug)]
 pub struct ReferenceOriginal {
-    /// (Optional) Name and NameUnicode entries
-    name: Option<(String, String)>,
+    /// (Optional) Name entry
+    name: Option<String>,
     libid_original: String,
 }
 
 /// Specifies a reference to an Automation type library.
 #[derive(Debug)]
 pub struct ReferenceRegistered {
-    name: Option<(String, String)>,
+    name: Option<String>,
     libid: String,
 }
 
 /// Specifies a reference to an external VBA project.
 #[derive(Debug)]
 pub struct ReferenceProject {
-    name: Option<(String, String)>,
+    name: Option<String>,
     libid_absolute: String,
     libid_relative: String,
     major_version: u32,

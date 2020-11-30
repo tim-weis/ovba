@@ -257,17 +257,18 @@ fn parse_constants_unicode(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8
 fn parse_reference_name(
     i: &[u8],
     code_page: u16,
-) -> IResult<&[u8], Option<(String, String)>, FormatError<&[u8]>> {
+) -> IResult<&[u8], Option<String>, FormatError<&[u8]>> {
     const NAME_SIGNATURE: &[u8] = &[0x16, 0x00];
     const NAME_UNICODE_SIGNATURE: &[u8] = &[0x3e, 0x00];
     let (i, name) = opt(tuple((
         preceded(tag(NAME_SIGNATURE), length_data(le_u32)),
         preceded(tag(NAME_UNICODE_SIGNATURE), length_data(le_u32)),
     )))(i)?;
-    if let Some((name, name_unicode)) = name {
+    // name_unicode MUST contain the UTF-16 encoding of name. Can be dropped without
+    // loss of information.
+    if let Some((name, _name_unicode)) = name {
         let name = cp_to_string(name, code_page);
-        let name_unicode = utf16_to_string(name_unicode);
-        Ok((i, Some((name, name_unicode))))
+        Ok((i, Some(name)))
     } else {
         Ok((i, None))
     }
@@ -636,6 +637,7 @@ fn cp_to_string(data: &[u8], code_page: u16) -> String {
     result
 }
 
+#[allow(dead_code)]
 fn utf16_to_string(data: &[u8]) -> String {
     let mut decoder = UTF_16LE.new_decoder_without_bom_handling();
     let max_length = decoder.max_utf8_buffer_length(data.len()).unwrap();
