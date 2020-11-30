@@ -51,7 +51,7 @@ fn main() -> Result<()> {
 
     for module in &project.information()?.modules {
         let path = format!("/VBA\\{}", &module.stream_name);
-        let offset = module.text_offset as usize;
+        let offset = module.text_offset;
         let src_code = project.decompress_stream_from(&path, offset)?;
         write("./out/".to_string() + &module.name, src_code)?;
     }
@@ -70,7 +70,6 @@ This is a preview release. It has been published to allow others to use it, and 
 
 All future work is tracked [here](https://github.com/tim-weis/ovba/issues). Notable issues include:
 
-* [Streamline API](https://github.com/tim-weis/ovba/issues/8). This is intended to remove some noise and redundancy from the API surface.
 * [Improve error reporting](https://github.com/tim-weis/issues/10).
 
 If you are missing a feature, found a bug, have a question, or want to provide feedback, make sure to [file an issue](https://github.com/tim-weis/ovba/issues/new).

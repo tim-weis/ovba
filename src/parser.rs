@@ -257,17 +257,18 @@ fn parse_constants_unicode(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8
 fn parse_reference_name(
     i: &[u8],
     code_page: u16,
-) -> IResult<&[u8], Option<(String, String)>, FormatError<&[u8]>> {
+) -> IResult<&[u8], Option<String>, FormatError<&[u8]>> {
     const NAME_SIGNATURE: &[u8] = &[0x16, 0x00];
     const NAME_UNICODE_SIGNATURE: &[u8] = &[0x3e, 0x00];
     let (i, name) = opt(tuple((
         preceded(tag(NAME_SIGNATURE), length_data(le_u32)),
         preceded(tag(NAME_UNICODE_SIGNATURE), length_data(le_u32)),
     )))(i)?;
-    if let Some((name, name_unicode)) = name {
+    // name_unicode MUST contain the UTF-16 encoding of name. Can be dropped without
+    // loss of information.
+    if let Some((name, _name_unicode)) = name {
         let name = cp_to_string(name, code_page);
-        let name_unicode = utf16_to_string(name_unicode);
-        Ok((i, Some((name, name_unicode))))
+        Ok((i, Some(name)))
     } else {
         Ok((i, None))
     }
@@ -443,45 +444,42 @@ fn parse_references(
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
 
-fn parse_module_name_unicode(i: &[u8]) -> IResult<&[u8], String, FormatError<&[u8]>> {
-    let (i, name_unicode) = preceded(tag(&[0x47, 0x00]), length_data(le_u32))(i)?;
-    let name_unicode = utf16_to_string(name_unicode);
-    Ok((i, name_unicode))
-}
-
 fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<&[u8]>> {
     // MODULENAME Record
     let (i, name) = preceded(tag(&[0x19, 0x00]), length_data(le_u32))(i)?;
     let name = cp_to_string(name, code_page);
 
-    // /(Optional) MODULENAMEUNICODE Record
-    let (i, name_unicode) = opt(parse_module_name_unicode)(i)?;
+    // (Optional) MODULENAMEUNICODE Record
+    // If present it MUST be the UTF-16 encoding of MODULENAME. It can safely be dropped.
+    let (i, _name_unicode) = opt(preceded(tag(&[0x47, 0x00]), length_data(le_u32)))(i)?;
 
     // MODULESTREAMNAME Record
-    let (i, (stream_name, stream_name_unicode)) = tuple((
+    // stream_name_unicode MUST be the UTF-16 encoding of stream_name. It can safely be dropped.
+    let (i, (stream_name, _stream_name_unicode)) = tuple((
         preceded(tag(&[0x1a, 0x00]), length_data(le_u32)),
         preceded(tag(&[0x32, 0x00]), length_data(le_u32)),
     ))(i)?;
     let stream_name = cp_to_string(stream_name, code_page);
-    let stream_name_unicode = utf16_to_string(stream_name_unicode);
 
     // MODULEDOCSTRING Record
-    let (i, (doc_string, doc_string_unicode)) = tuple((
+    // doc_string_unicode MUST be the UTF-16 encoding of doc_string. It can safely be dropped.
+    let (i, (doc_string, _doc_string_unicode)) = tuple((
         preceded(tag(&[0x1c, 0x00]), length_data(le_u32)),
         preceded(tag(&[0x48, 0x00]), length_data(le_u32)),
     ))(i)?;
     let doc_string = cp_to_string(doc_string, code_page);
-    let doc_string_unicode = utf16_to_string(doc_string_unicode);
 
     // MODULEOFFSET Record
     let (i, text_offset) = preceded(tuple((tag(&[0x31, 0x00]), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
+    let text_offset = text_offset as _;
 
     // MODULEHELPCONTEXT Record
     let (i, help_context) =
         preceded(tuple((tag(&[0x1e, 0x00]), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
 
     // MODULECOOKIE Record
-    let (i, cookie) = preceded(tuple((tag(&[0x2c, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
+    // Cookie MUST be ignored on read.
+    let (i, _cookie) = preceded(tuple((tag(&[0x2c, 0x00]), tag(U32_FIXED_SIZE_2))), le_u16)(i)?;
 
     // MODULETYPE Record
     let (i, id) = le_u16(i)?;
@@ -510,14 +508,10 @@ fn parse_module(i: &[u8], code_page: u16) -> IResult<&[u8], Module, FormatError<
         i,
         Module {
             name,
-            name_unicode,
             stream_name,
-            stream_name_unicode,
             doc_string,
-            doc_string_unicode,
             text_offset,
             help_context,
-            cookie,
             module_type,
             read_only,
             private,
@@ -559,14 +553,14 @@ pub(crate) fn parse_project_information(
     let (i, doc_string) = parse_doc_string(i)?;
     let doc_string = cp_to_string(&doc_string, code_page);
 
-    let (i, doc_string_unicode) = parse_doc_string_unicode(i)?;
-    let doc_string_unicode = utf16_to_string(&doc_string_unicode);
+    // doc_string_unicode MUST contain the UTF-16 encoding of doc_string. Can safely be dropped.
+    let (i, _doc_string_unicode) = parse_doc_string_unicode(i)?;
 
     let (i, help_file_1) = parse_help_file_1(i)?;
     let help_file_1 = cp_to_string(&help_file_1, code_page);
 
-    let (i, help_file_2) = parse_help_file_2(i)?;
-    let help_file_2 = cp_to_string(&help_file_2, code_page);
+    // help_file_2 MUST contain the same bytes as help_file_1. Can safely be dropped.
+    let (i, _help_file_2) = parse_help_file_2(i)?;
 
     let (i, help_context) = parse_help_context(i)?;
     let (i, lib_flags) = parse_lib_flags(i)?;
@@ -575,8 +569,8 @@ pub(crate) fn parse_project_information(
     let (i, constants) = parse_constants(i)?;
     let constants = cp_to_string(&constants, code_page);
 
-    let (i, constants_unicode) = parse_constants_unicode(i)?;
-    let constants_unicode = utf16_to_string(&constants_unicode);
+    // constants_unicode MUST contain the UTF-16 encoding of constants. Can safely be dropped.
+    let (i, _constants_unicode) = parse_constants_unicode(i)?;
 
     let (i, references) = parse_references(i, code_page)?;
 
@@ -600,15 +594,12 @@ pub(crate) fn parse_project_information(
                 code_page,
                 name,
                 doc_string,
-                doc_string_unicode,
                 help_file_1,
-                help_file_2,
                 help_context,
                 lib_flags,
                 version_major,
                 version_minor,
                 constants,
-                constants_unicode,
             },
             references,
             modules,
@@ -646,6 +637,7 @@ fn cp_to_string(data: &[u8], code_page: u16) -> String {
     result
 }
 
+#[allow(dead_code)]
 fn utf16_to_string(data: &[u8]) -> String {
     let mut decoder = UTF_16LE.new_decoder_without_bom_handling();
     let max_length = decoder.max_utf8_buffer_length(data.len()).unwrap();
