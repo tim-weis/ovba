@@ -43,10 +43,7 @@
 name: punk-buster
 
 on:
-  pull_request:
-  push:
-    branches:
-      - master
+  [push, pull_request]
 
 env:
   RUST_BACKTRACE: 1
