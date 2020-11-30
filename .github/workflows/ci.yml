@@ -2,8 +2,12 @@ name: continuous-integration
 on:
   [push, pull_request]
 
+env:
+  RUST_BACKTRACE: 1
+
 jobs:
-  check-formatting:
+  rustfmt:
+    name: Verify code formatting
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
@@ -14,4 +18,4 @@ jobs:
         override: true
         components: rustfmt, clippy
 
-    - run: cargo fmt --verbose -- check
+    - run: cargo fmt --all -- --check
