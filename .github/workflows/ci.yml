@@ -10,6 +10,8 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
+        profile: minimal
+        override: true
         components: rustfmt
 
     - run: cargo fmt --verbose -- check
