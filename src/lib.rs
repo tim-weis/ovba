@@ -35,41 +35,14 @@
 //!
 //! for module in &project.information()?.modules {
 //!     let path = format!("/VBA\\{}", &module.stream_name);
-//!     let offset = module.text_offset as usize;
+//!     let offset = module.text_offset;
 //!     let src_code = project.decompress_stream_from(&path, offset)?;
 //!     std::fs::write("./out/".to_string() + &module.name, src_code)?;
 //! }
 //! # Ok::<(), ovba::Error>(())
 //! ```
 //!
-//! # Notes
-//!
-//! The structures exposed at the public API closely follow the layout of the binary file
-//! format specification. This has consequences in two user-visible areas:
-//!
-//! ## Character encoding
-//!
-//! [MS-OVBA][MS-OVBA] stores character sequences in what Microsoft refers to as
-//! [MBCS][MBCS]. In most cases there's also at least an optional Unicode (UTF-16)
-//! representation available.
-//!
-//! This library exposes both (if present) using Rust's native character encoding,
-//! performing conversions as required as part of parsing. This results in seemingly
-//! redundant information being exposed at the API (e.g. [`Module::stream_name`] and
-//! [`Module::stream_name_unicode`]).
-//!
-//! This is an unfortunate situation and will be addressed in a future update.
-//!
-//! ## Unused data
-//!
-//! Several pieces of information in the file format are required to exist, yet need to
-//! be ignored on read (e.g. [`Module::cookie`]). Currently, some of these are exposed,
-//! and documented as "Unused data".
-//!
-//! This, too, is something that will be addressed in a future update.
-//!
 //! [MS-OVBA]: https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc
-//! [MBCS]: https://docs.microsoft.com/en-us/cpp/text/support-for-multibyte-character-sets-mbcss "Support for Multibyte Character Sets (MBCSs)"
 
 #![forbid(unsafe_code)]
 #![warn(rust_2018_idioms, missing_docs)]
@@ -125,14 +98,15 @@ pub struct ProjectInformation {
 /// Specifies a reference to a twiddled type library and its extended type library.
 #[derive(Debug)]
 pub struct ReferenceControl {
-    /// (Optional) Name and NameUnicode entries
-    name: Option<(String, String)>,
+    /// (Optional) Name entry
+    name: Option<String>,
     libid_original: Option<String>,
     libid_twiddled: String,
-    name_extended: Option<(String, String)>,
+    name_extended: Option<String>,
     libid_extended: String,
     guid: Vec<u8>, // Should be an `[u8; 16]`, though I'm not sure how to convert &[u8] returned by the parser into an array.
-    /// Unique for each `ReferenceControl`
+    /// MUST be Unique for each `ReferenceControl` in the VBA projectwith the same
+    /// libid_original.
     cookie: u32,
 }
 
@@ -140,22 +114,22 @@ pub struct ReferenceControl {
 /// [`ReferenceControl`]'s twiddled type library was generated from.
 #[derive(Debug)]
 pub struct ReferenceOriginal {
-    /// (Optional) Name and NameUnicode entries
-    name: Option<(String, String)>,
+    /// (Optional) Name entry
+    name: Option<String>,
     libid_original: String,
 }
 
 /// Specifies a reference to an Automation type library.
 #[derive(Debug)]
 pub struct ReferenceRegistered {
-    name: Option<(String, String)>,
+    name: Option<String>,
     libid: String,
 }
 
 /// Specifies a reference to an external VBA project.
 #[derive(Debug)]
 pub struct ReferenceProject {
-    name: Option<(String, String)>,
+    name: Option<String>,
     libid_absolute: String,
     libid_relative: String,
     major_version: u32,
@@ -185,15 +159,12 @@ pub struct Information {
     code_page: u16,
     name: String,
     doc_string: String,
-    doc_string_unicode: String,
     help_file_1: String,
-    help_file_2: String,
     help_context: u32,
     lib_flags: u32,
     version_major: u32,
     version_minor: u16,
     constants: String,
-    constants_unicode: String,
 }
 
 /// Specifies the containing module's type.
@@ -226,27 +197,16 @@ pub enum ModuleType {
 pub struct Module {
     /// Specifies a VBA identifier as the name of the containing `Module`.
     pub name: String,
-    /// Specifies a VBA identifier as the name of the containing `Module`.
-    ///
-    /// This field is optional in the file format specification. When present it
-    /// is equal to the `name` field.
-    pub name_unicode: Option<String>,
     /// Specifies the stream name in the VBA storage corresponding to the containing
     /// `Module`.
     pub stream_name: String,
-    /// Specifies the stream name derived from the UTF-16 encoding.
-    pub stream_name_unicode: String,
     /// Specifies the description for the containing `Module`.
     pub doc_string: String,
-    /// Specifies the description derived from the UTF-16 encoding.
-    pub doc_string_unicode: String,
     /// Specifies the location of the source code within the stream that corresponds to
-    ///  the containing `Module`.
-    pub text_offset: u32,
+    /// the containing `Module`.
+    pub text_offset: usize,
     /// Specifies the Help topic identifier for the containing `Module`.
     pub help_context: u32,
-    /// Unused data.
-    pub cookie: u16,
     /// Specifies whether the containing `Module` is a procedural module, document
     /// module, class module, or designer module.
     pub module_type: ModuleType,
