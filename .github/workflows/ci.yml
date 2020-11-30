@@ -16,6 +16,23 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
-        components: rustfmt, clippy
+        components: clippy
 
     - run: cargo fmt --all -- --check
+
+  clippy:
+    name: Lint with clippy
+    runs-on: windows-latest
+    env:
+      RUSTFLAGS: -Dwarnings
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: clippy
+      - run: cargo clippy --workspace --all-targets --verbose
+      - run: cargo clippy --workspace --all-targets --verbose --no-default-features
+      - run: cargo clippy --workspace --all-targets --verbose --all-features
