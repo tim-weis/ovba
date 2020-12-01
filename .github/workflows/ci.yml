@@ -1,7 +1,7 @@
 # Credit where credit is due. This is based on
 # [A Few Github Action "Recipes" for Rust](https://shift.click/blog/github-actions-rust/).
 
-name: continuous-integration
+name: tests
 
 on:
   [push, pull_request]
