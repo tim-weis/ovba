@@ -8,9 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-Internal:
+Internal improvements:
 
-* Continuous Integration.
+* Set up continuous integration workflow.
+* Added tests to verify some finicky decompressor internals.
 
 ### Changed
 ### Deprecated
