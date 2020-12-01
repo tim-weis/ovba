@@ -306,3 +306,6 @@ pub fn open_project(raw: Vec<u8>) -> Result<Project> {
 
     Ok(Project { container })
 }
+
+#[cfg(test)]
+mod tests;
