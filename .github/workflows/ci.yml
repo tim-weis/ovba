@@ -1,7 +1,7 @@
 # Credit where credit is due. This is based on
 # [A Few Github Action "Recipes" for Rust](https://shift.click/blog/github-actions-rust/).
 
-name: punk-buster
+name: continuous-integration
 
 on:
   [push, pull_request]
@@ -34,11 +34,6 @@ jobs:
       - run: cargo test --verbose --workspace
       - run: cargo test --verbose --workspace --all-features
       - run: cargo test --verbose --workspace --no-default-features
-
-      # Run doc tests
-      - run: cargo test --doc --verbose --workspace
-      - run: cargo test --doc --verbose --workspace --all-features
-      - run: cargo test --doc --verbose --workspace --no-default-features
 
   clippy:
     name: Lint with clippy
