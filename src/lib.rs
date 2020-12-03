@@ -33,7 +33,7 @@
 //! let data = std::fs::read("vbaProject.bin")?;
 //! let project = ovba::open_project(data)?;
 //!
-//! for module in &project.information()?.modules {
+//! for module in &project.modules {
 //!     let path = format!("/VBA\\{}", &module.stream_name);
 //!     let offset = module.text_offset;
 //!     let src_code = project.decompress_stream_from(&path, offset)?;
@@ -65,6 +65,12 @@ use std::{
 /// This type serves as the entry point into this crate's functionality and exposes the
 /// public API surface.
 pub struct Project {
+    /// Specifies version-independent information for the VBA project.
+    pub information: Information,
+    /// Specifies the external references of the VBA project.
+    pub references: Vec<Reference>,
+    /// Specifies the modules in the project.
+    pub modules: Vec<Module>,
     // TODO: Figure out how to make this generic (attempts have failed with
     //       trait bound violations). This would allow [`open_project`] to
     //       accept a wider range of input types.
@@ -82,18 +88,6 @@ pub enum SysKind {
     MacOs,
     /// For 64-bit Windows Platforms.
     Win64,
-}
-
-/// Specifies information for the VBA project, including project information, project
-/// references, and modules.
-#[derive(Debug)]
-pub struct ProjectInformation {
-    /// Specifies version-independent information for the VBA project.
-    pub information: Information,
-    /// Specifies the external references of the VBA project.
-    pub references: Vec<Reference>,
-    /// Specifies the modules in the project.
-    pub modules: Vec<Module>,
 }
 
 /// Specifies a reference to a twiddled type library and its extended type library.
@@ -219,6 +213,10 @@ pub struct Module {
 }
 
 impl Project {
+    // TODO: This should probably live someplace else. It exposes information internal to
+    //       the CFB implementation, that's not *immediately* useful or related to this
+    //       library's primary responsibility.
+
     /// Returns a list of entries (storages and streams) in the raw binary data. Each
     /// entry is represented as a tuple of two `String`s, where the first element
     /// contains the entry's name and the second element the entry's path inside the
@@ -279,40 +277,39 @@ impl Project {
             .1;
         Ok(data)
     }
-
-    /// Returns version independent project information.
-    pub fn information(&self) -> Result<ProjectInformation> {
-        const DIR_STREAM_PATH: &str = r#"/VBA\dir"#;
-
-        // Read *dir* stream
-        let mut buffer = Vec::new();
-        self.container
-            .borrow_mut()
-            .open_stream(DIR_STREAM_PATH)
-            .map_err(Error::Cfb)?
-            .read_to_end(&mut buffer)
-            .map_err(Error::Cfb)?;
-
-        // Decompress stream
-        let (remainder, buffer) = parser::decompress(&buffer).map_err(|_| Error::Decompressor)?;
-        debug_assert!(remainder.is_empty());
-
-        // Parse binary data
-        let (remainder, information) =
-            parser::parse_project_information(&buffer).map_err(|_| Error::Parser)?;
-        debug_assert_eq!(remainder.len(), 0, "Stream not fully consumed");
-
-        // Return structured information
-        Ok(information)
-    }
 }
 
-/// Constructs an opaque [`Project`] handle from raw binary data.
+/// Opens a VBA project.
+///
+/// This function consumes `raw` and returns a [`Project`] struct on success, populated
+/// with data from the parsed binary input.
 pub fn open_project(raw: Vec<u8>) -> Result<Project> {
     let cursor = Cursor::new(raw);
-    let container = CompoundFile::open(cursor).map_err(Error::Cfb)?;
+    let mut container = CompoundFile::open(cursor).map_err(Error::Cfb)?;
+
+    // Read *dir* stream
+    const DIR_STREAM_PATH: &str = r#"/VBA\dir"#;
+
+    let mut buffer = Vec::new();
+    container
+        .open_stream(DIR_STREAM_PATH)
+        .map_err(Error::Cfb)?
+        .read_to_end(&mut buffer)
+        .map_err(Error::Cfb)?;
+
+    // Decompress stream
+    let (remainder, buffer) = parser::decompress(&buffer).map_err(|_| Error::Decompressor)?;
+    debug_assert!(remainder.is_empty());
+
+    // Parse binary data
+    let (remainder, information) =
+        parser::parse_project_information(&buffer).map_err(|_| Error::Parser)?;
+    debug_assert_eq!(remainder.len(), 0, "Stream not fully consumed");
 
     Ok(Project {
+        information: information.information,
+        references: information.references,
+        modules: information.modules,
         container: RefCell::new(container),
     })
 }

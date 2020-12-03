@@ -50,7 +50,7 @@ fn main() -> Result<()> {
     let data = read("vbaProject.bin")?;
     let project = open_project(data)?;
 
-    for module in &project.information()?.modules {
+    for module in &project.modules {
         let path = format!("/VBA\\{}", &module.stream_name);
         let offset = module.text_offset;
         let src_code = project.decompress_stream_from(&path, offset)?;
