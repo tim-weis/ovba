@@ -1,5 +1,6 @@
 [![crates.io](https://img.shields.io/crates/v/ovba.svg)](https://crates.io/crates/ovba)
 [![docs.rs](https://docs.rs/ovba/badge.svg)](https://docs.rs/ovba)
+[![tests](https://github.com/tim-weis/ovba/workflows/tests/badge.svg?branch=master)](https://github.com/tim-weis/ovba/actions)
 
 An Office VBA project parser written in 100% safe Rust. This is an implementation of the [\[MS-OVBA\]: Office VBA File Format Structure](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc) protocol (Revision 9.1, published 2020-02-19).
 
@@ -47,9 +48,9 @@ use std::fs::{read, write};
 
 fn main() -> Result<()> {
     let data = read("vbaProject.bin")?;
-    let mut project = open_project(data)?;
+    let project = open_project(data)?;
 
-    for module in &project.information()?.modules {
+    for module in &project.modules {
         let path = format!("/VBA\\{}", &module.stream_name);
         let offset = module.text_offset;
         let src_code = project.decompress_stream_from(&path, offset)?;
