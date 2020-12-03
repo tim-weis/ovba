@@ -31,7 +31,7 @@
 //!
 //! ```rust,no_run
 //! let data = std::fs::read("vbaProject.bin")?;
-//! let mut project = ovba::open_project(data)?;
+//! let project = ovba::open_project(data)?;
 //!
 //! for module in &project.information()?.modules {
 //!     let path = format!("/VBA\\{}", &module.stream_name);
@@ -55,6 +55,7 @@ mod parser;
 use cfb::CompoundFile;
 
 use std::{
+    cell::RefCell,
     io::{Cursor, Read},
     path::Path,
 };
@@ -67,7 +68,7 @@ pub struct Project {
     // TODO: Figure out how to make this generic (attempts have failed with
     //       trait bound violations). This would allow [`open_project`] to
     //       accept a wider range of input types.
-    container: CompoundFile<Cursor<Vec<u8>>>,
+    container: RefCell<CompoundFile<Cursor<Vec<u8>>>>,
 }
 
 /// Specifies the platform for which the VBA project is created.
@@ -228,7 +229,12 @@ impl Project {
     /// [MS-CFB]: https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb/53989ce4-7b05-4f8d-829b-d08d6148375b
     pub fn list(&self) -> Result<Vec<(String, String)>> {
         let mut result = Vec::new();
-        for entry in self.container.walk_storage("/").map_err(Error::Cfb)? {
+        for entry in self
+            .container
+            .borrow()
+            .walk_storage("/")
+            .map_err(Error::Cfb)?
+        {
             result.push((
                 entry.name().to_owned(),
                 entry.path().to_str().unwrap_or_default().to_owned(),
@@ -240,16 +246,17 @@ impl Project {
     /// Returns a stream's contents.
     ///
     /// This is a convenience function operating on the CFB data.
-    pub fn read_stream<P>(&mut self, stream_path: P) -> Result<Vec<u8>>
+    pub fn read_stream<P>(&self, stream_path: P) -> Result<Vec<u8>>
     where
         P: AsRef<Path>,
     {
-        let mut stream = self
-            .container
-            .open_stream(stream_path)
-            .map_err(Error::Cfb)?;
         let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).map_err(Error::Cfb)?;
+        self.container
+            .borrow_mut()
+            .open_stream(stream_path)
+            .map_err(Error::Cfb)?
+            .read_to_end(&mut buffer)
+            .map_err(Error::Cfb)?;
 
         Ok(buffer)
     }
@@ -262,7 +269,7 @@ impl Project {
     /// The primary use case for this function is to extract source code from VBA
     /// [`Module`]s. The respective `offset` is reported by [`Module::text_offset`].
     // TODO: Code example
-    pub fn decompress_stream_from<P>(&mut self, stream_path: P, offset: usize) -> Result<Vec<u8>>
+    pub fn decompress_stream_from<P>(&self, stream_path: P, offset: usize) -> Result<Vec<u8>>
     where
         P: AsRef<Path>,
     {
@@ -274,16 +281,17 @@ impl Project {
     }
 
     /// Returns version independent project information.
-    pub fn information(&mut self) -> Result<ProjectInformation> {
+    pub fn information(&self) -> Result<ProjectInformation> {
         const DIR_STREAM_PATH: &str = r#"/VBA\dir"#;
 
         // Read *dir* stream
-        let mut stream = self
-            .container
-            .open_stream(DIR_STREAM_PATH)
-            .map_err(Error::Cfb)?;
         let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).map_err(Error::Cfb)?;
+        self.container
+            .borrow_mut()
+            .open_stream(DIR_STREAM_PATH)
+            .map_err(Error::Cfb)?
+            .read_to_end(&mut buffer)
+            .map_err(Error::Cfb)?;
 
         // Decompress stream
         let (remainder, buffer) = parser::decompress(&buffer).map_err(|_| Error::Decompressor)?;
@@ -304,7 +312,9 @@ pub fn open_project(raw: Vec<u8>) -> Result<Project> {
     let cursor = Cursor::new(raw);
     let container = CompoundFile::open(cursor).map_err(Error::Cfb)?;
 
-    Ok(Project { container })
+    Ok(Project {
+        container: RefCell::new(container),
+    })
 }
 
 #[cfg(test)]

@@ -48,7 +48,7 @@ use std::fs::{read, write};
 
 fn main() -> Result<()> {
     let data = read("vbaProject.bin")?;
-    let mut project = open_project(data)?;
+    let project = open_project(data)?;
 
     for module in &project.information()?.modules {
         let path = format!("/VBA\\{}", &module.stream_name);
