@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use crate::{
-    Information, Module, ModuleType, ProjectInformation, Reference, ReferenceControl,
-    ReferenceOriginal, ReferenceProject, ReferenceRegistered, SysKind,
+    Information, Module, ModuleType, Reference, ReferenceControl, ReferenceOriginal,
+    ReferenceProject, ReferenceRegistered, SysKind,
 };
 use codepage::to_encoding;
 use encoding_rs::{CoderResult, UTF_16LE};
@@ -16,6 +16,21 @@ use nom::{
     Err::Error,
     IResult,
 };
+
+// This used to be part of the public interface prior to flattening this out into the
+// [`Project`] struct.
+// TODO: Re-evaluate whether this struct is strictly necessary, or can be removed.
+/// Specifies information for the VBA project, including project information, project
+/// references, and modules.
+#[derive(Debug)]
+pub(crate) struct ProjectInformation {
+    /// Specifies version-independent information for the VBA project.
+    pub information: Information,
+    /// Specifies the external references of the VBA project.
+    pub references: Vec<Reference>,
+    /// Specifies the modules in the project.
+    pub modules: Vec<Module>,
+}
 
 // TODO: Make this error private by translating to a crate-level error type
 //       at the public parser interface.
