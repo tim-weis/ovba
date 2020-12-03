@@ -1,7 +1,7 @@
 //! An Office VBA project parser written in 100% safe Rust.
 //!
-//! This is a (partial) implementation of the [\[MS-OVBA\]: Office VBA File Format Structure][MS-OVBA]
-//! protocol (Revision 9.1, published 2020-02-19).
+//! This is a (partial) implementation of the [\[MS-OVBA\]: Office VBA File Format
+//! Structure][MS-OVBA] protocol (Revision 9.1, published 2020-02-19).
 //!
 //! The main entry point into the API is the [`Project`] type, returned by the
 //! [`open_project`] function.
