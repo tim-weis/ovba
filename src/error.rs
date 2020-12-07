@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
-use std::error;
 use std::fmt;
 use std::io;
+use std::{error, string};
 
 /// A type alias for `Result<T, ovba::Error>`.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -20,9 +20,8 @@ pub enum Error {
     // TODO: Add details to make the diagnostic more meaningful to clients.
     /// Generic parsing error.
     Parser,
-    // TODO: Implement proper error handling. The module ovba should probably get its own error type.
-    /// Generic error.
-    Unknown,
+    /// Requested module cannot be found.
+    ModuleNotFound(string::String),
 }
 
 impl From<io::Error> for Error {
@@ -41,7 +40,7 @@ impl error::Error for Error {
             Error::Cfb(e) => Some(e),
             Error::Decompressor => None,
             Error::Parser => None,
-            Error::Unknown => None,
+            Error::ModuleNotFound(_) => None,
         }
     }
 }
@@ -53,7 +52,7 @@ impl fmt::Display for Error {
             Error::Cfb(e) => write!(f, "CFB error: {}", e),
             Error::Decompressor => write!(f, "Decompressor error"),
             Error::Parser => write!(f, "Parse error"),
-            Error::Unknown => write!(f, "Generic error"),
+            Error::ModuleNotFound(name) => write!(f, r#"Module "{}" not found"#, name),
         }
     }
 }
