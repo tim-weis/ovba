@@ -11,38 +11,47 @@
 //! Opening a project:
 //!
 //! ```rust,no_run
-//! let data = std::fs::read("vbaProject.bin")?;
-//! let project = ovba::open_project(data)?;
-//! # Ok::<(), ovba::Error>(())
-//! ```
+//! use std::fs::read;
+//! use ovba::open_project;
 //!
-//! Listing all CFB entries:
-//!
-//! ```rust,no_run
-//! let data = std::fs::read("vbaProject.bin")?;
-//! let project = ovba::open_project(data)?;
-//! for (name, path) in &project.list()? {
-//!     println!(r#"Name: "{}"; Path: "{}""#, name, path);
-//! }
+//! let data = read("vbaProject.bin")?;
+//! let project = open_project(data)?;
 //! # Ok::<(), ovba::Error>(())
 //! ```
 //!
 //! A more complete example that dumps an entire VBA project's source code:
 //!
 //! ```rust,no_run
-//! let data = std::fs::read("vbaProject.bin")?;
-//! let project = ovba::open_project(data)?;
+//! use std::fs::{read, write};
+//! use ovba::open_project;
+//!
+//! let data = read("vbaProject.bin")?;
+//! let project = open_project(data)?;
 //!
 //! for module in &project.modules {
-//!     let path = format!("/VBA\\{}", &module.stream_name);
-//!     let offset = module.text_offset;
-//!     let src_code = project.decompress_stream_from(&path, offset)?;
-//!     std::fs::write("./out/".to_string() + &module.name, src_code)?;
+//!     let src_code = project.module_source_raw(&module.name)?;
+//!     write("./out/".to_string() + &module.name, src_code)?;
+//! }
+//! # Ok::<(), ovba::Error>(())
+//! ```
+//!
+//! The API also supports low-level access to the [\[MS-CFB\]: Compound File Binary File
+//! Format][MS-CFB] data. The following example lists all CFB entries:
+//!
+//! ```rust,no_run
+//! use std::fs::read;
+//! use ovba::open_project;
+//!
+//! let data = read("vbaProject.bin")?;
+//! let project = open_project(data)?;
+//! for (name, path) in &project.list()? {
+//!     println!(r#"Name: "{}"; Path: "{}""#, name, path);
 //! }
 //! # Ok::<(), ovba::Error>(())
 //! ```
 //!
 //! [MS-OVBA]: https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ovba/575462ba-bf67-4190-9fac-c275523c75fc
+//! [MS-CFB]: https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb/53989ce4-7b05-4f8d-829b-d08d6148375b
 
 #![forbid(unsafe_code)]
 #![warn(rust_2018_idioms, missing_docs)]
@@ -53,6 +62,7 @@ pub use crate::error::{Error, Result};
 mod parser;
 
 use cfb::CompoundFile;
+use parser::cp_to_string;
 
 use std::{
     cell::RefCell,
@@ -213,6 +223,29 @@ pub struct Module {
 }
 
 impl Project {
+    /// Returns a stream's decompressed data.
+    ///
+    /// This function reads a stream referenced by `stream_path` and passes the data
+    /// starting at `offset` into the RLE decompressor.
+    ///
+    /// The primary use case for this function is to extract source code from VBA
+    /// [`Module`]s. The respective `offset` is reported by [`Module::text_offset`].
+    ///
+    /// This is a low-level function that is useful for very specific use cases only.
+    /// Client code that needs to read source code should use [`Project::module_source`]
+    /// or [`Project::module_source_raw`] instead.
+    // TODO: Code example
+    pub fn decompress_stream_from<P>(&self, stream_path: P, offset: usize) -> Result<Vec<u8>>
+    where
+        P: AsRef<Path>,
+    {
+        let data = self.read_stream(stream_path)?;
+        let data = parser::decompress(&data[offset..])
+            .map_err(|_| Error::Decompressor)?
+            .1;
+        Ok(data)
+    }
+
     // TODO: This should probably live someplace else. It exposes information internal to
     //       the CFB implementation, that's not *immediately* useful or related to this
     //       library's primary responsibility.
@@ -241,9 +274,41 @@ impl Project {
         Ok(result)
     }
 
+    /// Returns a module's source code.
+    ///
+    /// Similar to [`Project::module_source_raw`] this function returns the source code
+    /// of a project's module. After the raw source code has been decoded it is then
+    /// converted to a `String` using the project's code page.
+    pub fn module_source(&self, name: &str) -> Result<String> {
+        let source_raw = self.module_source_raw(name)?;
+        let source = cp_to_string(&source_raw, self.information.code_page);
+
+        Ok(source)
+    }
+
+    /// Returns the raw source code from a module.
+    ///
+    /// The result contains a module's source code as is. No character encoding conversion
+    /// is done. The data is encoded using the project's code page available through
+    /// [`Information::code_page`].
+    pub fn module_source_raw(&self, name: &str) -> Result<Vec<u8>> {
+        let module = self
+            .modules
+            .iter()
+            .find(|&module| module.name == name)
+            .ok_or_else(|| Error::ModuleNotFound(name.to_owned()))?;
+
+        let path = format!("/VBA\\{}", &module.stream_name);
+        let offset = module.text_offset;
+        let src_code = self.decompress_stream_from(&path, offset)?;
+
+        Ok(src_code)
+    }
+
     /// Returns a stream's contents.
     ///
-    /// This is a convenience function operating on the CFB data.
+    /// This is a low-level function operating on the CFB data. The CFB is the storage
+    /// container of the raw binary VBA project.
     pub fn read_stream<P>(&self, stream_path: P) -> Result<Vec<u8>>
     where
         P: AsRef<Path>,
@@ -257,25 +322,6 @@ impl Project {
             .map_err(Error::Cfb)?;
 
         Ok(buffer)
-    }
-
-    /// Returns a stream's decompressed data.
-    ///
-    /// This function reads a stream referenced by `stream_path` and passes the data
-    /// starting at `offset` into the RLE decompressor.
-    ///
-    /// The primary use case for this function is to extract source code from VBA
-    /// [`Module`]s. The respective `offset` is reported by [`Module::text_offset`].
-    // TODO: Code example
-    pub fn decompress_stream_from<P>(&self, stream_path: P, offset: usize) -> Result<Vec<u8>>
-    where
-        P: AsRef<Path>,
-    {
-        let data = self.read_stream(stream_path)?;
-        let data = parser::decompress(&data[offset..])
-            .map_err(|_| Error::Decompressor)?
-            .1;
-        Ok(data)
     }
 }
 

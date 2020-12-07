@@ -635,7 +635,7 @@ pub(crate) fn parse_project_information(
 /// This is a temporary solution that allows me to postpone implementing error reporting
 /// to a later time, when the set of expected errors and the overall error handling strategy
 /// are better understood.
-fn cp_to_string(data: &[u8], code_page: u16) -> String {
+pub(crate) fn cp_to_string(data: &[u8], code_page: u16) -> String {
     let encoding = to_encoding(code_page).expect("Failed to map code page to an encoding.");
     let mut decoder = encoding.new_decoder_without_bom_handling();
     // The following returns `None` on overflow. That case is only expected with malformed document
