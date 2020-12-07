@@ -21,6 +21,25 @@ This library does not provide a way to extract the raw binary VBA project data f
 
 ## Usage
 
+Write out all modules' source code:
+
+```rust
+use ovba::{open_project, Result};
+use std::fs::{read, write};
+
+fn main() -> Result<()> {
+    let data = read("vbaProject.bin")?;
+    let project = open_project(data)?;
+
+    for module in &project.modules {
+        let src_code = project.module_source_raw(&module.name)?;
+        write("./out/".to_string() + &module.name, src_code)?;
+    }
+
+    Ok(())
+}
+```
+
 List all CFB entries contained in a VBA project:
 
 ```rust
@@ -34,27 +53,6 @@ fn main() -> Result<()> {
     // Iterate over CFB entries
     for (name, path) in project.list()? {
         println!(r#"Name: "{}"; Path: "{}""#, name, path);
-    }
-
-    Ok(())
-}
-```
-
-Write out all modules' source code:
-
-```rust
-use ovba::{open_project, Result};
-use std::fs::{read, write};
-
-fn main() -> Result<()> {
-    let data = read("vbaProject.bin")?;
-    let project = open_project(data)?;
-
-    for module in &project.modules {
-        let path = format!("/VBA\\{}", &module.stream_name);
-        let offset = module.text_offset;
-        let src_code = project.decompress_stream_from(&path, offset)?;
-        write("./out/".to_string() + &module.name, src_code)?;
     }
 
     Ok(())
