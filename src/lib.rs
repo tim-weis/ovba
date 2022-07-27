@@ -328,6 +328,11 @@ impl<R: Read + Seek> Project<R> {
 
         Ok(buffer)
     }
+
+    /// Consumes the `Project`, returning the underlying `CompoundFile`.
+    pub fn into_inner(self) -> CompoundFile<R> {
+        self.container.into_inner()
+    }
 }
 
 /// Opens a VBA project.
