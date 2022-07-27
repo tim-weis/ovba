@@ -17,7 +17,7 @@ keywords = ["parser", "office", "vba"]
 categories = ["parser-implementations"]
 
 [dependencies]
-cfb = "0.3"
+cfb = "0.7"
 codepage = "0.1"
 encoding_rs = "0.8"
 nom = "5.1"
