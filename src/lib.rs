@@ -337,17 +337,29 @@ impl<R: Read + Seek> Project<R> {
 
 /// Opens a VBA project.
 ///
-/// This function consumes `raw` and returns a [`Project`] struct on success, populated
+/// This function consumes `reader` and returns a [`Project`] struct on success, populated
 /// with data from the parsed binary input.
-pub fn open_project<R: Read + Seek>(raw: R) -> Result<Project<R>> {
-    let container = CompoundFile::open(raw).map_err(Error::Cfb)?;
-    open_project_by_path("/", container)
+pub fn open_project<R: Read + Seek>(reader: R) -> Result<Project<R>> {
+    let container = CompoundFile::open(reader).map_err(Error::Cfb)?;
+    open_project_with_path_container("/", container)
+}
+
+/// Opens a VBA project.
+///
+/// This function consumes `path` and `reader` and returns a [`Project`] struct on success, populated
+/// with data from the parsed binary input.
+pub fn open_project_with_path<P: AsRef<Path>, R: Read + Seek>(
+    root: P,
+    reader: R,
+) -> Result<Project<R>> {
+    let container = CompoundFile::open(reader).map_err(Error::Cfb)?;
+    open_project_with_path_container(root, container)
 }
 
 /// Opens a VBA project.
 ///
 /// This function get path to VBA project in container and returns a [`Project`] struct on success
-pub fn open_project_by_path<P: AsRef<Path>, R: Read + Seek>(
+pub fn open_project_with_path_container<P: AsRef<Path>, R: Read + Seek>(
     root: P,
     mut container: CompoundFile<R>,
 ) -> Result<Project<R>> {
