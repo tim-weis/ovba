@@ -58,6 +58,7 @@
 
 #![forbid(unsafe_code)]
 #![warn(rust_2018_idioms, missing_docs)]
+#![allow(dead_code)]
 
 mod error;
 pub use crate::error::{Error, Result};
