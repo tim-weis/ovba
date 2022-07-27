@@ -79,7 +79,7 @@ use std::{
 /// This type serves as the entry point into this crate's functionality and exposes the
 /// public API surface.
 pub struct Project<R> {
-    root_path: PathBuf,
+    root: PathBuf,
     /// Specifies version-independent information for the VBA project.
     pub information: Information,
     /// Specifies the external references of the VBA project.
@@ -304,7 +304,7 @@ impl<R: Read + Seek> Project<R> {
             .ok_or_else(|| Error::ModuleNotFound(name.to_owned()))?;
 
         let offset = module.text_offset;
-        let path = self.root_path.join(&module.stream_name);
+        let path = self.root.join(&module.stream_name);
         let src_code = self.decompress_stream_from(&path, offset)?;
 
         Ok(src_code)
@@ -383,7 +383,7 @@ pub fn open_project_with_path_container<P: AsRef<Path>, R: Read + Seek>(
     debug_assert_eq!(remainder.len(), 0, "Stream not fully consumed");
 
     Ok(Project {
-        root_path: root.as_ref().to_path_buf(),
+        root: root.as_ref().to_path_buf(),
         information: information.information,
         references: information.references,
         modules: information.modules,
