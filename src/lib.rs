@@ -12,10 +12,11 @@
 //!
 //! ```rust,no_run
 //! use std::fs::read;
+//! use std::io::Cursor;
 //! use ovba::open_project;
 //!
 //! let data = read("vbaProject.bin")?;
-//! let project = open_project(data)?;
+//! let project = open_project(Cursor::new(data))?;
 //! # Ok::<(), ovba::Error>(())
 //! ```
 //!
@@ -23,10 +24,11 @@
 //!
 //! ```rust,no_run
 //! use std::fs::{read, write};
+//! use std::io::Cursor;
 //! use ovba::open_project;
 //!
 //! let data = read("vbaProject.bin")?;
-//! let project = open_project(data)?;
+//! let project = open_project(Cursor::new(data))?;
 //!
 //! for module in &project.modules {
 //!     let src_code = project.module_source_raw(&module.name)?;
@@ -40,10 +42,11 @@
 //!
 //! ```rust,no_run
 //! use std::fs::read;
+//! use std::io::Cursor;
 //! use ovba::open_project;
 //!
 //! let data = read("vbaProject.bin")?;
-//! let project = open_project(data)?;
+//! let project = open_project(Cursor::new(data))?;
 //! for (name, path) in &project.list()? {
 //!     println!(r#"Name: "{}"; Path: "{}""#, name, path);
 //! }
@@ -55,6 +58,7 @@
 
 #![forbid(unsafe_code)]
 #![warn(rust_2018_idioms, missing_docs)]
+#![allow(dead_code)]
 
 mod error;
 pub use crate::error::{Error, Result};
@@ -66,15 +70,17 @@ use parser::cp_to_string;
 
 use std::{
     cell::RefCell,
-    io::{Cursor, Read},
+    io::{Read, Seek},
     path::Path,
+    path::PathBuf,
 };
 
 /// Represents a VBA project.
 ///
 /// This type serves as the entry point into this crate's functionality and exposes the
 /// public API surface.
-pub struct Project {
+pub struct Project<R> {
+    root: PathBuf,
     /// Specifies version-independent information for the VBA project.
     pub information: Information,
     /// Specifies the external references of the VBA project.
@@ -84,7 +90,7 @@ pub struct Project {
     // TODO: Figure out how to make this generic (attempts have failed with
     //       trait bound violations). This would allow [`open_project`] to
     //       accept a wider range of input types.
-    container: RefCell<CompoundFile<Cursor<Vec<u8>>>>,
+    container: RefCell<CompoundFile<R>>,
 }
 
 /// Specifies the platform for which the VBA project is created.
@@ -222,7 +228,7 @@ pub struct Module {
     pub private: bool,
 }
 
-impl Project {
+impl<R: Read + Seek> Project<R> {
     /// Returns a stream's decompressed data.
     ///
     /// This function reads a stream referenced by `stream_path` and passes the data
@@ -298,8 +304,8 @@ impl Project {
             .find(|&module| module.name == name)
             .ok_or_else(|| Error::ModuleNotFound(name.to_owned()))?;
 
-        let path = format!("/VBA\\{}", &module.stream_name);
         let offset = module.text_offset;
+        let path = self.root.join(&module.stream_name);
         let src_code = self.decompress_stream_from(&path, offset)?;
 
         Ok(src_code)
@@ -323,22 +329,47 @@ impl Project {
 
         Ok(buffer)
     }
+
+    /// Consumes the `Project`, returning the underlying `CompoundFile`.
+    pub fn into_inner(self) -> CompoundFile<R> {
+        self.container.into_inner()
+    }
 }
 
 /// Opens a VBA project.
 ///
-/// This function consumes `raw` and returns a [`Project`] struct on success, populated
+/// This function consumes `reader` and returns a [`Project`] struct on success, populated
 /// with data from the parsed binary input.
-pub fn open_project(raw: Vec<u8>) -> Result<Project> {
-    let cursor = Cursor::new(raw);
-    let mut container = CompoundFile::open(cursor).map_err(Error::Cfb)?;
+pub fn open_project<R: Read + Seek>(reader: R) -> Result<Project<R>> {
+    let container = CompoundFile::open(reader).map_err(Error::Cfb)?;
+    open_project_with_path_container("/", container)
+}
 
+/// Opens a VBA project.
+///
+/// This function consumes `path` and `reader` and returns a [`Project`] struct on success, populated
+/// with data from the parsed binary input.
+pub fn open_project_with_path<P: AsRef<Path>, R: Read + Seek>(
+    root: P,
+    reader: R,
+) -> Result<Project<R>> {
+    let container = CompoundFile::open(reader).map_err(Error::Cfb)?;
+    open_project_with_path_container(root, container)
+}
+
+/// Opens a VBA project.
+///
+/// This function get path to VBA project in container and returns a [`Project`] struct on success
+pub fn open_project_with_path_container<P: AsRef<Path>, R: Read + Seek>(
+    root: P,
+    mut container: CompoundFile<R>,
+) -> Result<Project<R>> {
     // Read *dir* stream
-    const DIR_STREAM_PATH: &str = r#"/VBA\dir"#;
+    let path = root.as_ref().join("VBA").join("dir");
 
     let mut buffer = Vec::new();
     container
-        .open_stream(DIR_STREAM_PATH)
+        .open_stream(path)
         .map_err(Error::Cfb)?
         .read_to_end(&mut buffer)
         .map_err(Error::Cfb)?;
@@ -353,6 +384,7 @@ pub fn open_project(raw: Vec<u8>) -> Result<Project> {
     debug_assert_eq!(remainder.len(), 0, "Stream not fully consumed");
 
     Ok(Project {
+        root: root.as_ref().to_path_buf(),
         information: information.information,
         references: information.references,
         modules: information.modules,
