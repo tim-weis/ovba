@@ -100,6 +100,9 @@ pub enum SysKind {
     Win64,
 }
 
+// TODO: Remove exemption once the implementation is complete.
+#[allow(dead_code)]
+
 /// Specifies a reference to a twiddled type library and its extended type library.
 #[derive(Debug)]
 pub struct ReferenceControl {
@@ -115,6 +118,9 @@ pub struct ReferenceControl {
     cookie: u32,
 }
 
+// TODO: Remove exemption once the implementation is complete.
+#[allow(dead_code)]
+
 /// Specifies the identifier of the Automation type library the containing
 /// [`ReferenceControl`]'s twiddled type library was generated from.
 #[derive(Debug)]
@@ -124,12 +130,18 @@ pub struct ReferenceOriginal {
     libid_original: String,
 }
 
+// TODO: Remove exemption once the implementation is complete.
+#[allow(dead_code)]
+
 /// Specifies a reference to an Automation type library.
 #[derive(Debug)]
 pub struct ReferenceRegistered {
     name: Option<String>,
     libid: String,
 }
+
+// TODO: Remove exemption once the implementation is complete.
+#[allow(dead_code)]
 
 /// Specifies a reference to an external VBA project.
 #[derive(Debug)]
@@ -153,6 +165,9 @@ pub enum Reference {
     /// The `Reference` is a [`ReferenceProject`].
     Project(ReferenceProject),
 }
+
+// TODO: Remove exemption once the implementation is complete.
+#[allow(dead_code)]
 
 /// Specifies version-independent information for the VBA project.
 #[derive(Debug)]
@@ -300,7 +315,7 @@ impl Project {
 
         let path = format!("/VBA\\{}", &module.stream_name);
         let offset = module.text_offset;
-        let src_code = self.decompress_stream_from(&path, offset)?;
+        let src_code = self.decompress_stream_from(path, offset)?;
 
         Ok(src_code)
     }
