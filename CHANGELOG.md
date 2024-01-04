@@ -13,6 +13,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 ### Security
 
+## [0.4.1] - 2024-01-04
+
+Servicing release.
+
+### Fixed
+
+* Bumps `nom` dependency to at least `5.1.3` to resolve a future incompatibility warning (see PR [Fix for trailing semicolon in macros.](https://github.com/rust-bakery/nom/pull/1657) for details).
+
 ## [0.4.0] - 2020-12-07
 
 This release primarily introduces convenience implementations. Additions and removals of `error::Error` variants make this a breaking change.
@@ -20,7 +28,7 @@ This release primarily introduces convenience implementations. Additions and rem
 ### Added
 
 * `Project::module_source_raw()`: Convenience implementation to return a module's source code (raw codepage encoding).
-* `Project::module_source()`: Convenience implemention to return a module's source code converted to UTF-8 encoding.
+* `Project::module_source()`: Convenience implementation to return a module's source code converted to UTF-8 encoding.
 * `error::Error::ModuleNotFound`. This is used for public functions that identify modules by name.
 
 ### Changed
@@ -91,7 +99,8 @@ Non-breaking changes:
 - VBA project parser.
 - RLE decompressor for compressed streams.
 
-[Unreleased]: https://github.com/tim-weis/ovba/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/tim-weis/ovba/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/tim-weis/ovba/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/tim-weis/ovba/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/tim-weis/ovba/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/tim-weis/ovba/compare/0.1.0...0.2.0

@@ -1,6 +1,6 @@
 [package]
 name = "ovba"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Tim Weis <tim.weis@outlook.com>"]
 description = "An Office VBA project parser written in 100% safe Rust."
 edition = "2018"
