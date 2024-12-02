@@ -166,27 +166,24 @@ pub enum Reference {
     Project(ReferenceProject),
 }
 
-// TODO: Remove exemption once the implementation is complete.
-#[allow(dead_code)]
-
 /// Specifies version-independent information for the VBA project.
 #[derive(Debug)]
 pub struct Information {
     /// Specifies the platform for which the VBA project is created.
     pub sys_kind: SysKind,
-    lcid: u32,
-    lcid_invoke: u32,
+    _lcid: u32,
+    _lcid_invoke: u32,
     /// Specifies the code page for the VBA project.
     ///
     pub code_page: u16,
-    name: String,
-    doc_string: String,
-    help_file_1: String,
-    help_context: u32,
-    lib_flags: u32,
-    version_major: u32,
-    version_minor: u16,
-    constants: String,
+    _name: String,
+    _doc_string: String,
+    _help_file_1: String,
+    _help_context: u32,
+    _lib_flags: u32,
+    _version_major: u32,
+    _version_minor: u16,
+    _constants: String,
 }
 
 /// Specifies the containing module's type.
