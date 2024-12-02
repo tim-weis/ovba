@@ -1,14 +1,10 @@
 [package]
 name = "ovba"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Tim Weis <tim.weis@outlook.com>"]
 description = "An Office VBA project parser written in 100% safe Rust."
 edition = "2018"
-exclude = [
-    ".gitignore",
-    "docs/dev/**",
-    ".github/**"
-]
+exclude = [".gitignore", "docs/dev/**", ".github/**"]
 license-file = "LICENSE"
 repository = "https://github.com/tim-weis/ovba"
 documentation = "https://docs.rs/ovba"

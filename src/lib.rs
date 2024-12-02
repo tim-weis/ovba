@@ -176,7 +176,9 @@ pub struct Information {
     pub sys_kind: SysKind,
     lcid: u32,
     lcid_invoke: u32,
-    code_page: u16,
+    /// Specifies the code page for the VBA project.
+    ///
+    pub code_page: u16,
     name: String,
     doc_string: String,
     help_file_1: String,
