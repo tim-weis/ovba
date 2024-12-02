@@ -102,7 +102,6 @@ pub enum SysKind {
 
 // TODO: Remove exemption once the implementation is complete.
 #[allow(dead_code)]
-
 /// Specifies a reference to a twiddled type library and its extended type library.
 #[derive(Debug)]
 pub struct ReferenceControl {
@@ -120,7 +119,6 @@ pub struct ReferenceControl {
 
 // TODO: Remove exemption once the implementation is complete.
 #[allow(dead_code)]
-
 /// Specifies the identifier of the Automation type library the containing
 /// [`ReferenceControl`]'s twiddled type library was generated from.
 #[derive(Debug)]
@@ -132,7 +130,6 @@ pub struct ReferenceOriginal {
 
 // TODO: Remove exemption once the implementation is complete.
 #[allow(dead_code)]
-
 /// Specifies a reference to an Automation type library.
 #[derive(Debug)]
 pub struct ReferenceRegistered {
@@ -142,7 +139,6 @@ pub struct ReferenceRegistered {
 
 // TODO: Remove exemption once the implementation is complete.
 #[allow(dead_code)]
-
 /// Specifies a reference to an external VBA project.
 #[derive(Debug)]
 pub struct ReferenceProject {
@@ -168,7 +164,6 @@ pub enum Reference {
 
 // TODO: Remove exemption once the implementation is complete.
 #[allow(dead_code)]
-
 /// Specifies version-independent information for the VBA project.
 #[derive(Debug)]
 pub struct Information {
@@ -176,7 +171,9 @@ pub struct Information {
     pub sys_kind: SysKind,
     lcid: u32,
     lcid_invoke: u32,
-    code_page: u16,
+    /// Specifies the code page for the VBA project.
+    ///
+    pub code_page: u16,
     name: String,
     doc_string: String,
     help_file_1: String,
