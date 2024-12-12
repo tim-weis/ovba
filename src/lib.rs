@@ -169,6 +169,7 @@ pub enum Reference {
 pub struct Information {
     /// Specifies the platform for which the VBA project is created.
     pub sys_kind: SysKind,
+    compat: Option<u32>,
     lcid: u32,
     lcid_invoke: u32,
     /// Specifies the code page for the VBA project.
@@ -310,7 +311,7 @@ impl Project {
             .find(|&module| module.name == name)
             .ok_or_else(|| Error::ModuleNotFound(name.to_owned()))?;
 
-        let path = format!("/VBA\\{}", &module.stream_name);
+        let path = format!("/VBA/{}", &module.stream_name);
         let offset = module.text_offset;
         let src_code = self.decompress_stream_from(path, offset)?;
 
@@ -346,7 +347,7 @@ pub fn open_project(raw: Vec<u8>) -> Result<Project> {
     let mut container = CompoundFile::open(cursor).map_err(Error::Cfb)?;
 
     // Read *dir* stream
-    const DIR_STREAM_PATH: &str = r#"/VBA\dir"#;
+    const DIR_STREAM_PATH: &str = r#"/VBA/dir"#;
 
     let mut buffer = Vec::new();
     container
