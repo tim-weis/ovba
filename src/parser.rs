@@ -252,17 +252,21 @@ fn parse_version(i: &[u8]) -> IResult<&[u8], (u32, u16), FormatError<&[u8]>> {
     Ok((i, version))
 }
 
-fn parse_constants(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
+fn parse_constants(i: &[u8]) -> IResult<&[u8], Option<Vec<u8>>, FormatError<&[u8]>> {
     const CONSTANTS_SIGNATURE: &[u8] = &[0x0c, 0x00];
-    let (i, constants) = preceded(tag(CONSTANTS_SIGNATURE), length_data(le_u32))(i)?;
-    Ok((i, constants.to_vec()))
+    let (i, constants) = opt(preceded(tag(CONSTANTS_SIGNATURE), length_data(le_u32)))(i)?;
+    let constants = constants.map(|slice| slice.to_vec());
+    Ok((i, constants))
 }
 
-fn parse_constants_unicode(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>> {
+fn parse_constants_unicode(i: &[u8]) -> IResult<&[u8], Option<Vec<u8>>, FormatError<&[u8]>> {
     const CONSTANTS_UNICODE_SIGNATURE: &[u8] = &[0x3c, 0x00];
-    let (i, constants_unicode) =
-        preceded(tag(CONSTANTS_UNICODE_SIGNATURE), length_data(le_u32))(i)?;
-    Ok((i, constants_unicode.to_vec()))
+    let (i, constants_unicode) = opt(preceded(
+        tag(CONSTANTS_UNICODE_SIGNATURE),
+        length_data(le_u32),
+    ))(i)?;
+    let constants_unicode = constants_unicode.map(|slice| slice.to_vec());
+    Ok((i, constants_unicode))
 }
 
 // -------------------------------------------------------------------------
@@ -581,11 +585,22 @@ pub(crate) fn parse_project_information(
     let (i, lib_flags) = parse_lib_flags(i)?;
     let (i, (version_major, version_minor)) = parse_version(i)?;
 
+    // The `PROJECTCONSTANTS` record is optional (as a whole); make sure to only parse the
+    // Unicode portion if `parse_constants` returned `Some`.
+    //
+    // TODO: Consider consolidating CP and Unicode parsing into a single function. This
+    // would avoid having to subsequently deal with the outcome of this function.
     let (i, constants) = parse_constants(i)?;
-    let constants = cp_to_string(&constants, code_page);
+    let constants = constants.map(|constants| cp_to_string(&constants, code_page));
 
-    // constants_unicode MUST contain the UTF-16 encoding of constants. Can safely be dropped.
-    let (i, _constants_unicode) = parse_constants_unicode(i)?;
+    let i = if constants.is_some() {
+        // constants_unicode MUST contain the UTF-16 encoding of constants. Can safely be
+        // dropped.
+        let (i, _constants_unicode) = parse_constants_unicode(i)?;
+        i
+    } else {
+        i
+    };
 
     let (i, references) = parse_references(i, code_page)?;
 

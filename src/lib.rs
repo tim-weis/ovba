@@ -181,7 +181,7 @@ pub struct Information {
     lib_flags: u32,
     version_major: u32,
     version_minor: u16,
-    constants: String,
+    constants: Option<String>,
 }
 
 /// Specifies the containing module's type.
