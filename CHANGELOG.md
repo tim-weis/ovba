@@ -13,6 +13,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 ### Security
 
+## [0.6.0] - 2024-12-19
+
+### Fixed
+
+* The parser acknowledges that the `PROJECTCONSTANTS` record in the `PROJECTINFORMATION` record is optional. It used to assume that it was mandatory.
+* The parser acknowledges the presence of an optional `PROJECTCOMPATVERSION` record. This record was first described in version 11 of the \[MS-OVBA\] specification.
+
+## [0.5.0] - 2024-12-02
+
+### Added
+
+* `Information::code_page` is now public.
+
 ## [0.4.1] - 2024-01-04
 
 Servicing release.
@@ -99,7 +112,9 @@ Non-breaking changes:
 - VBA project parser.
 - RLE decompressor for compressed streams.
 
-[Unreleased]: https://github.com/tim-weis/ovba/compare/0.4.1...HEAD
+[Unreleased]: https://github.com/tim-weis/ovba/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/tim-weis/ovba/compare/0.5.0...0.6.0
+[0.5.0]: https://github.com/tim-weis/ovba/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/tim-weis/ovba/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/tim-weis/ovba/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/tim-weis/ovba/compare/0.2.0...0.3.0
