@@ -169,6 +169,7 @@ pub enum Reference {
 pub struct Information {
     /// Specifies the platform for which the VBA project is created.
     pub sys_kind: SysKind,
+    compat: Option<u32>,
     lcid: u32,
     lcid_invoke: u32,
     /// Specifies the code page for the VBA project.

@@ -164,6 +164,15 @@ fn parse_syskind(i: &[u8]) -> IResult<&[u8], SysKind, FormatError<&[u8]>> {
     }
 }
 
+fn parse_compat(i: &[u8]) -> IResult<&[u8], Option<u32>, FormatError<&[u8]>> {
+    const COMPAT_SIGNATURE: &[u8] = &[0x4A, 0x00];
+    let (i, compat) = opt(preceded(
+        tuple((tag(COMPAT_SIGNATURE), tag(U32_FIXED_SIZE_4))),
+        le_u32,
+    ))(i)?;
+    Ok((i, compat))
+}
+
 fn parse_lcid(i: &[u8]) -> IResult<&[u8], u32, FormatError<&[u8]>> {
     const LCID_SIGNATURE: &[u8] = &[0x02, 0x00];
     let (i, lcid) = preceded(tuple((tag(LCID_SIGNATURE), tag(U32_FIXED_SIZE_4))), le_u32)(i)?;
@@ -562,6 +571,7 @@ pub(crate) fn parse_project_information(
     i: &[u8],
 ) -> IResult<&[u8], ProjectInformation, FormatError<&[u8]>> {
     let (i, sys_kind) = parse_syskind(i)?;
+    let (i, compat) = parse_compat(i)?;
     let (i, lcid) = parse_lcid(i)?;
     let (i, lcid_invoke) = parse_lcid_invoke(i)?;
     let (i, code_page) = parse_code_page(i)?;
@@ -619,6 +629,7 @@ pub(crate) fn parse_project_information(
         ProjectInformation {
             information: Information {
                 sys_kind,
+                compat,
                 lcid,
                 lcid_invoke,
                 code_page,
