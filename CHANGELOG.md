@@ -13,6 +13,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 ### Security
 
+## [0.7.1] - 2024-12-22
+
+Servicing release.
+
+### Changed
+
+* Updated the `cfb` dependency from "0.3" to "0.10".
+
+### Security
+
+* Updated the `nom` dependency from "5.1" to "7.1". This acknowledges [RUSTSEC-2023-0086](https://rustsec.org/advisories/RUSTSEC-2023-0086.html) that describes soundness issues in the `lexical-core` crate.
+
+  `lexical-core` was an optional dependency of the `nom` crate prior to version "7". It was pulled in via default features, but wasn't used by this crate. This update makes sure that clients of this crate won't have to deal with false alarms going forward.
+
 ## [0.7.0] - 2024-12-22
 
 ### Fixed
@@ -118,7 +132,8 @@ Non-breaking changes:
 - VBA project parser.
 - RLE decompressor for compressed streams.
 
-[Unreleased]: https://github.com/tim-weis/ovba/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/tim-weis/ovba/compare/0.7.1...HEAD
+[0.7.1]: https://github.com/tim-weis/ovba/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/tim-weis/ovba/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/tim-weis/ovba/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/tim-weis/ovba/compare/0.4.1...0.5.0
