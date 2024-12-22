@@ -134,7 +134,7 @@ pub(crate) fn decompress(i: &[u8]) -> IResult<&[u8], Vec<u8>, FormatError<&[u8]>
     // * If all data has been consumed, return an `Ok()` value.
     nom::combinator::all_consuming(nom::multi::fold_many1(
         chunk_parser,
-        Vec::new(),
+        Vec::new,
         |mut acc: Vec<_>, data| {
             acc.extend(data);
             acc
