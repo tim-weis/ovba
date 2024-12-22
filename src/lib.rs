@@ -311,7 +311,11 @@ impl Project {
             .find(|&module| module.name == name)
             .ok_or_else(|| Error::ModuleNotFound(name.to_owned()))?;
 
-        let path = format!("/VBA\\{}", &module.stream_name);
+        let path = if cfg!(windows) {
+            format!("/VBA\\{}", &module.stream_name)
+        } else {
+            format!("/VBA/{}", &module.stream_name)
+        };
         let offset = module.text_offset;
         let src_code = self.decompress_stream_from(path, offset)?;
 
@@ -347,7 +351,10 @@ pub fn open_project(raw: Vec<u8>) -> Result<Project> {
     let mut container = CompoundFile::open(cursor).map_err(Error::Cfb)?;
 
     // Read *dir* stream
-    const DIR_STREAM_PATH: &str = r#"/VBA\dir"#;
+    #[cfg(target_family = "windows")]
+    const DIR_STREAM_PATH: &str = "/VBA\\dir";
+    #[cfg(not(target_family = "windows"))]
+    const DIR_STREAM_PATH: &str = "/VBA/dir";
 
     let mut buffer = Vec::new();
     container
