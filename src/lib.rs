@@ -67,7 +67,8 @@ use parser::cp_to_string;
 use std::{
     cell::RefCell,
     io::{Cursor, Read},
-    path::Path,
+    path::{Path, PathBuf},
+    str::FromStr,
 };
 
 /// Represents a VBA project.
@@ -311,11 +312,10 @@ impl Project {
             .find(|&module| module.name == name)
             .ok_or_else(|| Error::ModuleNotFound(name.to_owned()))?;
 
-        let path = if cfg!(windows) {
-            format!("/VBA\\{}", &module.stream_name)
-        } else {
-            format!("/VBA/{}", &module.stream_name)
-        };
+        // `PathBuf::from_str` cannot fail (`type Err = Infallible`). The subsequent
+        // `unwrap` thus won't `panic!`. No path separator normalization is done in the
+        // process; this is intentional.
+        let path = PathBuf::from_str("/VBA").unwrap().join(&module.stream_name);
         let offset = module.text_offset;
         let src_code = self.decompress_stream_from(path, offset)?;
 
